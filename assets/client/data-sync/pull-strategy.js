@@ -1,7 +1,7 @@
-import cloneDeep from "lodash.clonedeep";
 import isPublished from "../util/isPublished";
 import logger from "../logger/logger";
 import ApiHelper from "./api-helper";
+import { cloneDeep } from "lodash";
 
 /**
  * PullStrategy.

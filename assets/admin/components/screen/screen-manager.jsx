@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import set from "lodash.set";
 import { useNavigate } from "react-router-dom";
 import {
   usePostV2ScreensMutation,
@@ -12,6 +11,7 @@ import {
   displayError,
 } from "../util/list/toast-component/display-toast";
 import idFromUrl from "../util/helpers/id-from-url";
+import { set } from "lodash/object";
 
 /**
  * The screen manager component.

@@ -1,7 +1,5 @@
 import { useEffect, useState, useContext } from "react";
 import { useTranslation } from "react-i18next";
-import get from "lodash.get";
-import set from "lodash.set";
 import { ulid } from "ulid";
 import { useDispatch } from "react-redux";
 import dayjs from "dayjs";
@@ -21,6 +19,7 @@ import {
 } from "../util/list/toast-component/display-toast";
 import idFromUrl from "../util/helpers/id-from-url";
 import localStorageKeys from "../util/local-storage-keys";
+import { get, set } from "lodash/object";
 
 /**
  * The slide manager component.
@@ -548,33 +547,29 @@ function SlideManager({
 
   /** Submitted media is successful. */
   useEffect(() => {
-    if (submitting) {
-      if (isSaveMediaSuccess) {
-        const newSubmittingMedia = [...submittingMedia];
-        const submittedMedia = newSubmittingMedia.shift();
+    if (submitting && isSaveMediaSuccess) {
+      const newSubmittingMedia = [...submittingMedia];
+      const submittedMedia = newSubmittingMedia.shift();
 
-        const newFormStateObject = { ...formStateObject };
-        newFormStateObject.media.push(savedMediaData["@id"]);
+      const newFormStateObject = { ...formStateObject };
+      newFormStateObject.media.push(savedMediaData["@id"]);
 
-        // Replace TEMP-- id with real id.
-        set(
-          newFormStateObject.content,
-          submittedMedia.fieldName,
-          get(newFormStateObject.content, submittedMedia.fieldName).map(
-            (mediaId) =>
-              mediaId === submittedMedia.tempId
-                ? savedMediaData["@id"]
-                : mediaId,
-          ),
-        );
+      // Replace TEMP-- id with real id.
+      set(
+        newFormStateObject.content,
+        submittedMedia.fieldName,
+        get(newFormStateObject.content, submittedMedia.fieldName).map(
+          (mediaId) =>
+            mediaId === submittedMedia.tempId ? savedMediaData["@id"] : mediaId,
+        ),
+      );
 
-        const newMediaData = { ...mediaData };
-        newMediaData[savedMediaData["@id"]] = savedMediaData;
-        setMediaData(newMediaData);
+      const newMediaData = { ...mediaData };
+      newMediaData[savedMediaData["@id"]] = savedMediaData;
+      setMediaData(newMediaData);
 
-        // Save new list.
-        setSubmittingMedia(newSubmittingMedia);
-      }
+      // Save the new list.
+      setSubmittingMedia(newSubmittingMedia);
     }
   }, [isSaveMediaSuccess]);
 

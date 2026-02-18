@@ -12,6 +12,7 @@
 ###    [Prettier](https://prettier.io/) exists.
 
 name: JavaScript
+run-name: "JavaScript - ${{ github.head_ref || github.ref_name }}"
 
 on:
   pull_request:

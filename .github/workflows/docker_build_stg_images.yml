@@ -6,6 +6,7 @@ on:
 
 # This Action builds to os2display/* using ./infrastructure/*
 name: Build docker image (develop)
+run-name: "Build docker image (staging) - ${{ github.head_ref || github.ref_name }}"
 
 jobs:
   docker:

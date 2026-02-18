@@ -12,6 +12,7 @@
 ###    [Prettier](https://prettier.io/) exists.
 
 name: Styles
+run-name: "Styles - ${{ github.head_ref || github.ref_name }}"
 
 on:
   pull_request:

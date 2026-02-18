@@ -24,6 +24,7 @@
 ###    ```
 
 name: Composer
+run-name: "Composer - ${{ github.head_ref || github.ref_name }}"
 
 env:
   COMPOSE_USER: runner

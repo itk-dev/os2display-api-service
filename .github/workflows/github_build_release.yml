@@ -94,7 +94,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Build main
-
       - name: Docker meta (main)
         id: meta-main
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
@@ -125,7 +124,6 @@ jobs:
           push-to-registry: true
 
       # Build Nginx (depends on main)
-
       - name: Docker meta (nginx)
         id: meta-nginx
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7

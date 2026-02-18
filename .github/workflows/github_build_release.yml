@@ -102,7 +102,7 @@ jobs:
           tags: |
             type=raw,value=${{ github.ref_name }}
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image (main)
         id: push-main
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:
@@ -113,15 +113,7 @@ jobs:
           push: true
           tags: ${{ steps.meta-main.outputs.tags }}
           labels: ${{ steps.meta-main.outputs.labels }}
-          provenance: mode=max
           sbom: true
-
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MAIN}}
-          subject-digest: ${{ steps.push-main.outputs.digest }}
-          push-to-registry: true
 
       # Build Nginx (depends on main)
       - name: Docker meta (nginx)
@@ -132,7 +124,7 @@ jobs:
           tags: |
             type=raw,value=${{ github.ref_name }}
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image (nginx)
         id: push-nginx
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:
@@ -140,16 +132,9 @@ jobs:
           file: ./infrastructure/nginx/Dockerfile
           build-args: |
             APP_VERSION=${{ github.ref_name }}
+            APP_IMAGE=${{ env.IMAGE_NAME_MAIN }}
           push: true
           pull: true
           tags: ${{ steps.meta-nginx.outputs.tags }}
           labels: ${{ steps.meta-nginx.outputs.labels }}
-          provenance: mode=max
           sbom: true
-
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_NGINX}}
-          subject-digest: ${{ steps.push-nginx.outputs.digest }}
-          push-to-registry: true

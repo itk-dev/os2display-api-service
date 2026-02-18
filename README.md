@@ -126,10 +126,10 @@ docker compose exec phpfpm bin/console lexik:jwt:generate-keypair
 To get started with the development setup, run the following task command:
 
 ```shell
-task site-install
+task install:site
 
 # or if you want to load fixtures as well
-task site-install-with-fixtures
+task install:site-with-fixtures
 ```
 
 If you want to load fixtures manually, use the command (`--yes` for auto-confirming):

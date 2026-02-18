@@ -20,65 +20,65 @@ tasks:
     cmds:
       - "{{ .DOCKER_COMPOSE }} {{ .CLI_ARGS }}"
 
-  site-install:
+  install:site:
     prompt: "This will reset your setup. Continue?"
     desc: "Install new OS2Display."
     cmds:
       - task compose -- down
       - task compose -- pull
-      - task npm-install
-      - task compose-up
-      - task composer-install
+      - task install:npm
+      - task compose:up
+      - task install:composer
       - task db:migrate --yes
       - task fixtures:copy-assets
-      - task site-open
+      - task open
     silent: true
 
-  site-install-with-fixtures:
+  install:site-with-fixtures:
     prompt: "This will reset your setup. Continue?"
     desc: "Install new OS2Display with fixtures installed."
     cmds:
       - task compose -- down
       - task compose -- pull
-      - task npm-install
-      - task compose-up
-      - task composer-install
+      - task install:npm
+      - task compose:up
+      - task install:composer
       - task db:migrate --yes
       - task fixtures:load --yes
       - task fixtures:copy-assets
-      - task site-open
+      - task open
     silent: true
 
-  site-open:
+  open:
     desc: "Opens admin, docs and client."
     cmds:
-      - task site-open:admin
-      - task site-open:client
-      - task site-open:docs
-      - task site-open:templates
+      - task open:admin
+      - task open:client
+      - task open:docs
+      - task open:templates
     silent: true
 
-  site-open:admin:
+  open:admin:
     desc: "Opens admin site."
     cmds:
       - open http://{{ .BASE_URL }}
 
-  site-open:client:
+  open:client:
     desc: "Opens client site."
     cmds:
       - open http://{{ .BASE_URL }}/client
 
-  site-open:docs:
+  open:docs:
     desc: "Opens API docs page"
     cmds:
       - open http://{{ .BASE_URL }}/docs
 
-  site-open:templates:
+  open:templates:
     desc: "Opens templates site."
     cmds:
       - open http://{{ .BASE_URL }}/template
 
-  npm-install:
+  install:npm:
     desc: "Installs node dependencies with npm."
     cmds:
       - docker compose run --rm --volume "$PWD:/md" node npm install
@@ -89,13 +89,13 @@ tasks:
       - task compose -- exec phpfpm composer {{.CLI_ARGS}}
     silent: true
 
-  compose-up:
+  compose:up:
     desc: "Runs docker compose up."
     cmds:
       - task compose -- up --detach --remove-orphans
     silent: true
 
-  composer-install:
+  install:composer:
     desc: "Installs dependencies with composer."
     cmds:
       - task composer -- install {{.COMPOSER_INSTALL_ARGUMENTS}} {{.CLI_ARGS}}
@@ -177,7 +177,7 @@ tasks:
     desc: Apply fixtures
     cmds:
       - task compose -- exec phpfpm bin/console hautelook:fixtures:load --no-interaction
-      - task compose-up
+      - task compose:up
     silent: true
 
   db:migrate:
@@ -185,7 +185,7 @@ tasks:
     desc: Run database migrations
     cmds:
       - task compose -- exec phpfpm bin/console doctrine:migrations:migrate --no-interaction
-      - task compose-up
+      - task compose:up
     silent: true
 
   test:api:

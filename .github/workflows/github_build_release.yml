@@ -1,4 +1,5 @@
-# This workflow builds a GitHub release on tag creation.
+# This workflow builds a GitHub release on tag creation and then builds and
+# pushes Docker images to GitHub Container Registry.
 
 on:
   push:
@@ -8,15 +9,14 @@ on:
 name: Create Github Release
 run-name: "Create Github Release - ${{ github.head_ref || github.ref_name }}"
 
-permissions:
-  contents: write
-
 env:
   COMPOSE_USER: runner
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,3 +61,96 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.TOKEN }}
         shell: bash
+
+  images:
+    needs: create-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME_MAIN: ${{ github.repository }}
+      IMAGE_NAME_NGINX: ${{ github.repository }}-nginx
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build main
+
+      - name: Docker meta (main)
+        id: meta-main
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MAIN }}
+          tags: |
+            type=raw,value=${{ github.ref_name }}
+
+      - name: Build and push Docker image
+        id: push-main
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: ./infrastructure/display-api-service/
+          file: ./infrastructure/display-api-service/Dockerfile
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
+          push: true
+          tags: ${{ steps.meta-main.outputs.tags }}
+          labels: ${{ steps.meta-main.outputs.labels }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MAIN}}
+          subject-digest: ${{ steps.push-main.outputs.digest }}
+          push-to-registry: true
+
+      # Build Nginx (depends on main)
+
+      - name: Docker meta (nginx)
+        id: meta-nginx
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_NGINX }}
+          tags: |
+            type=raw,value=${{ github.ref_name }}
+
+      - name: Build and push Docker image
+        id: push-nginx
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: ./infrastructure/nginx/
+          file: ./infrastructure/nginx/Dockerfile
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
+          push: true
+          tags: ${{ steps.meta-nginx.outputs.tags }}
+          labels: ${{ steps.meta-nginx.outputs.labels }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_NGINX}}
+          subject-digest: ${{ steps.push-nginx.outputs.digest }}
+          push-to-registry: true

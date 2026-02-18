@@ -1,3 +1,5 @@
+# This workflow builds a GitHub release on tag creation.
+
 on:
   push:
     tags:
@@ -21,10 +23,28 @@ jobs:
       - name: Install Task task runner
         uses: go-task/setup-task@v1
 
-      - name: Install, Build, Cleanup
+      - name: Setup docker network
         run: |
-          task --taskfile=.github/Taskfile.yaml build-prod
-          
+          docker network create frontend
+
+      - name: Install dependencies with composer
+        run: |
+          docker compose run --rm --env APP_ENV=prod phpfpm composer install --no-dev -o --classmap-authoritative
+          docker compose run --rm --env APP_ENV=prod phpfpm composer clear-cache
+
+      - name: Installs node dependencies with npm
+        run: |
+          docker compose run --rm node npm install
+          docker compose run --rm node npm run build
+
+      - name: Cleanup after install
+        run: |
+          rm -rf docs
+          rm -rf infrastructure
+          rm -rf fixtures
+          rm -rf tests
+          rm -rf node_modules
+
       - name: Make assets dir
         run: |
           mkdir -p ../assets

@@ -15,13 +15,14 @@ docker buildx build \
       --tag=ghcr.io/itk-dev/display-api-service:${APP_VERSION} \
       --file="display-api-service/Dockerfile" ../
 
+docker push ghcr.io/itk-dev/display-api-service:${APP_VERSION}
+
 docker buildx build \
       --platform linux/amd64,linux/arm64 \
       --no-cache \
       --pull \
-      --build-arg VERSION=${APP_VERSION} \
+      --build-arg APP_VERSION=${APP_VERSION} \
       --tag=ghcr.io/itk-dev/display-api-service-nginx:${APP_VERSION} \
       --file="nginx/Dockerfile" nginx
 
-#docker push ghcr.io/itk-dev/display-api-service:${APP_VERSION}
-#docker push ghcr.io/itk-dev/display-api-service-nginx:${APP_VERSION}
+docker push ghcr.io/itk-dev/display-api-service-nginx:${APP_VERSION}

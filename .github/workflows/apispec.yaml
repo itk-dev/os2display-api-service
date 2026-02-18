@@ -1,6 +1,7 @@
 on: pull_request
 
 name: Api Spec
+run-name: "Api Spec - ${{ github.ref_name }}"
 
 jobs:
   apispec:

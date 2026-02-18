@@ -19,6 +19,7 @@
 ###    exists.
 
 name: Markdown
+run-name: "Markdown - ${{ github.ref_name }}"
 
 on:
   pull_request:

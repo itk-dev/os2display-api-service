@@ -6,6 +6,7 @@ on:
       - "*"
 
 name: Create Github Release
+run-name: "Create Github Release - ${{ github.ref_name }}"
 
 permissions:
   contents: write

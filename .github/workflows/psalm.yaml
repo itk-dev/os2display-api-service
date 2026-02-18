@@ -1,6 +1,7 @@
 on: pull_request
 
 name: Psalm
+run-name: "Psalm - ${{ github.ref_name }}"
 
 jobs:
   psalm:

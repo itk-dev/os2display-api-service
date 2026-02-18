@@ -1,6 +1,7 @@
 on: pull_request
 
 name: Rector
+run-name: "Rector - ${{ github.ref_name }}"
 
 jobs:
   rector:

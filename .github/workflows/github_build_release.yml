@@ -141,6 +141,7 @@ jobs:
           build-args: |
             APP_VERSION=${{ github.ref_name }}
           push: true
+          pull: true
           tags: ${{ steps.meta-nginx.outputs.tags }}
           labels: ${{ steps.meta-nginx.outputs.labels }}
           provenance: mode=max

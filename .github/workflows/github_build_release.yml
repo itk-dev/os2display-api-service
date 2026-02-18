@@ -36,6 +36,7 @@ jobs:
 
       - name: Cleanup after install
         run: |
+          sudo chown -R runner:runner .
           rm -rf docs
           rm -rf infrastructure
           rm -rf fixtures
@@ -48,8 +49,7 @@ jobs:
 
       - name: Create archive
         run: |
-          tar \
-            -zcf ../assets/${{ github.event.repository.name }}-${{ github.ref_name }}.tar.gz ./*
+          tar -zcf ../assets/${{ github.event.repository.name }}-${{ github.ref_name }}.tar.gz ./*
 
       - name: Create checksum
         run: sha256sum ../assets/${{ github.event.repository.name }}-${{ github.ref_name }}.tar.gz > ../assets/checksum.txt

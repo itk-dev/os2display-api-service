@@ -29,7 +29,7 @@ ARG APP_VERSION="develop"
 WORKDIR /app
 
 # Copy only composer files first for better layer caching
-COPY . ./
+COPY --chown=deploy:deploy . ./
 
 # Composer packages first
 RUN APP_ENV=prod composer install --no-dev --optimize-autoloader --classmap-authoritative

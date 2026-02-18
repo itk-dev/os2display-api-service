@@ -2,26 +2,26 @@
 
 set -eux
 
-APP_VERSION=develop
+APP_VERSION=3.0.0-beta1
 
 docker pull itkdev/php8.4-fpm:alpine
 docker pull nginxinc/nginx-unprivileged:alpine
 
-docker build --build-context repository-root=.. \
+docker buildx build \
       --platform linux/amd64,linux/arm64 \
+      --no-cache \
       --pull \
-      --no-cache \
       --build-arg APP_VERSION=${APP_VERSION} \
-      --tag=turegjorup/display-api-service:${APP_VERSION} \
-      --file="display-api-service/Dockerfile" display-api-service
+      --tag=ghcr.io/itk-dev/display-api-service:${APP_VERSION} \
+      --file="display-api-service/Dockerfile" ../
 
-
-docker build --build-context repository-root=.. \
+docker buildx build \
       --platform linux/amd64,linux/arm64 \
       --no-cache \
+      --pull \
       --build-arg VERSION=${APP_VERSION} \
-      --tag=turegjorup/display-api-service-nginx:${APP_VERSION} \
+      --tag=ghcr.io/itk-dev/display-api-service-nginx:${APP_VERSION} \
       --file="nginx/Dockerfile" nginx
 
-docker push os2display/display-api-service:${APP_VERSION}
-docker push os2display/display-api-service-nginx:${APP_VERSION}
+#docker push ghcr.io/itk-dev/display-api-service:${APP_VERSION}
+#docker push ghcr.io/itk-dev/display-api-service-nginx:${APP_VERSION}

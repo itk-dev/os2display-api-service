@@ -1,9 +1,7 @@
 ---
 on:
-  workflow_run:
-    workflows: ["Create Github Release"]
-    types:
-      - completed
+  registry_package:
+    types: [ published ]
 
 # This Action builds to os2display/* using ./infrastructure/*
 # @see https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images#publishing-images-to-github-packages

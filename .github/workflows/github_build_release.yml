@@ -113,15 +113,7 @@ jobs:
           push: true
           tags: ${{ steps.meta-main.outputs.tags }}
           labels: ${{ steps.meta-main.outputs.labels }}
-          provenance: mode=max
           sbom: true
-
-      - name: Generate artifact attestation  (main)
-        uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MAIN }}
-          subject-digest: ${{ steps.push-main.outputs.digest }}
-          push-to-registry: true
 
       # Build Nginx (depends on main)
       - name: Docker meta (nginx)
@@ -145,12 +137,4 @@ jobs:
           pull: true
           tags: ${{ steps.meta-nginx.outputs.tags }}
           labels: ${{ steps.meta-nginx.outputs.labels }}
-          provenance: mode=max
           sbom: true
-
-      - name: Generate artifact attestation (nginx)
-        uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_NGINX }}
-          subject-digest: ${{ steps.push-nginx.outputs.digest }}
-          push-to-registry: true

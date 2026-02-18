@@ -1,7 +1,7 @@
 on: pull_request
 
 name: Composer install
-run-name: "Composer install - ${{ github.ref_name }}"
+run-name: "Composer install - ${{ github.head_ref || github.ref_name }}"
 
 jobs:
   test-composer-install:

@@ -32,7 +32,7 @@
 ### > project by adding a more important configuration file, `.php-cs-fixer.php`.
 
 name: Symfony PHP
-run-name: "Symfony PHP - ${{ github.ref_name }}"
+run-name: "Symfony PHP - ${{ github.head_ref || github.ref_name }}"
 
 env:
   COMPOSE_USER: runner

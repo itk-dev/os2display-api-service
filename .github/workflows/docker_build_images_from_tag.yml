@@ -9,7 +9,7 @@ on:
 # @see https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images#publishing-images-to-github-packages
 
 name: Build docker images (tag)
-run-name: "Build release - ${{ github.ref_name }}"
+run-name: "Build release - ${{ github.head_ref || github.ref_name }}"
 
 env:
   REGISTRY: ghcr.io

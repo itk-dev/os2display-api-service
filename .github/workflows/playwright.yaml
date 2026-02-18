@@ -1,7 +1,7 @@
 on: pull_request
 
 name: Test
-run-name: "Playwright - ${{ github.ref_name }}"
+run-name: "Playwright - ${{ github.head_ref || github.ref_name }}"
 
 env:
   COMPOSE_USER: runner

@@ -1,7 +1,7 @@
 on: pull_request
 
 name: Test
-run-name: "PHPUnit - ${{ github.ref_name }}"
+run-name: "PHPUnit - ${{ github.head_ref || github.ref_name }}"
 
 jobs:
   phpunit:

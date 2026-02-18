@@ -1,7 +1,7 @@
 on: pull_request
 
 name: Doctrine
-run-name: "Doctrine - ${{ github.ref_name }}"
+run-name: "Doctrine - ${{ github.head_ref || github.ref_name }}"
 
 jobs:
   validate-doctrine-shema:

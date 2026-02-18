@@ -22,7 +22,7 @@
 ###    in the root of the project defines which files to check and rules to use.
 
 name: Twig
-run-name: "Twig - ${{ github.ref_name }}"
+run-name: "Twig - ${{ github.head_ref || github.ref_name }}"
 
 env:
   COMPOSE_USER: runner

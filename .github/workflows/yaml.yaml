@@ -19,7 +19,7 @@
 ### Prettier format YAML files in the `config/` folder like Symfony expects.
 
 name: YAML
-run-name: "YAML - ${{ github.ref_name }}"
+run-name: "YAML - ${{ github.head_ref || github.ref_name }}"
 
 on:
   pull_request:

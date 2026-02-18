@@ -2,11 +2,10 @@
 !/.git/config
 
 # Unneeded application files
-/.docker/data/README.md
+/.docker
 /.github
 /docs
 /fixtures
-/infrastructure
 /public/build
 /public/fixtures
 /public/media/*
@@ -55,3 +54,15 @@ launch.json
 ###> vincentlanglet/twig-cs-fixer ###
 /.twig-cs-fixer.cache
 ###< vincentlanglet/twig-cs-fixer ###
+
+docker-compose.*
+phpstan.dist.neon
+psalm*
+playwright.*
+phpunit.*
+rector.php
+Taskfile.yml
+.markdown*
+.php-cs-fixer.dist.php
+.twig-cs-fixer.dist.php
+.prettier

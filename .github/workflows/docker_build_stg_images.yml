@@ -2,7 +2,7 @@
 on:
   push:
     branches:
-      - "develop"
+      - "release/*"
 
 # This Action builds to os2display/* using ./infrastructure/*
 name: Build docker image (develop)

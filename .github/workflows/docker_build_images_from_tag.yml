@@ -1,8 +1,9 @@
 ---
 on:
-  push:
-    tags:
-      - "*"
+  workflow_run:
+    workflows: ["Create Github Release"]
+    types:
+      - completed
 
 # This Action builds to os2display/* using ./infrastructure/*
 # @see https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images#publishing-images-to-github-packages
@@ -16,6 +17,7 @@ env:
 
 jobs:
   docker:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
     permissions:
@@ -26,6 +28,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -47,15 +51,17 @@ jobs:
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MAIN }}
+          tags: |
+            type=raw,value=${{ github.event.workflow_run.head_branch }}
 
       - name: Build and push Docker image
-        id: push
+        id: push-main
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:
           context: ./infrastructure/display-api-service/
           file: ./infrastructure/display-api-service/Dockerfile
           build-args: |
-            APP_VERSION=${{ github.ref }}
+            APP_VERSION=${{ github.event.workflow_run.head_branch }}
           push: true
           tags: ${{ steps.meta-main.outputs.tags }}
           labels: ${{ steps.meta-main.outputs.labels }}
@@ -66,7 +72,7 @@ jobs:
         uses: actions/attest-build-provenance@v3
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MAIN}}
-          subject-digest: ${{ steps.push.outputs.digest }}
+          subject-digest: ${{ steps.push-main.outputs.digest }}
           push-to-registry: true
 
       # Build Nginx (depends on main)
@@ -76,19 +82,17 @@ jobs:
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_NGINX }}
-
-      - name: Get the tag
-        id: get_tag
-        run: echo ::set-output name=git_tag::$(echo $GITHUB_REF_NAME)
+          tags: |
+            type=raw,value=${{ github.event.workflow_run.head_branch }}
 
       - name: Build and push Docker image
-        id: push
+        id: push-nginx
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:
           context: ./infrastructure/nginx/
           file: ./infrastructure/nginx/Dockerfile
           build-args: |
-            APP_VERSION=${{ steps.get_tag.outputs.git_tag }}
+            APP_VERSION=${{ github.event.workflow_run.head_branch }}
           push: true
           tags: ${{ steps.meta-nginx.outputs.tags }}
           labels: ${{ steps.meta-nginx.outputs.labels }}
@@ -99,5 +103,5 @@ jobs:
         uses: actions/attest-build-provenance@v3
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_NGINX}}
-          subject-digest: ${{ steps.push.outputs.digest }}
+          subject-digest: ${{ steps.push-nginx.outputs.digest }}
           push-to-registry: true

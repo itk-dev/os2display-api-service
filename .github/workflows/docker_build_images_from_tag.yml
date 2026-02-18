@@ -1,9 +1,7 @@
 ---
 on:
-  workflow_run:
-    workflows: ["Create Github Release"]
-    types:
-      - completed
+  release:
+    types: [published]
 
 # This Action builds to os2display/* using ./infrastructure/*
 # @see https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images#publishing-images-to-github-packages
@@ -18,7 +16,6 @@ env:
 
 jobs:
   docker:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
     permissions:
@@ -30,7 +27,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.workflow_run.head_branch }}
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -53,7 +50,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MAIN }}
           tags: |
-            type=raw,value=${{ github.event.workflow_run.head_branch }}
+            type=raw,value=${{ github.event.release.tag_name }}
 
       - name: Build and push Docker image
         id: push-main
@@ -62,7 +59,7 @@ jobs:
           context: ./infrastructure/display-api-service/
           file: ./infrastructure/display-api-service/Dockerfile
           build-args: |
-            APP_VERSION=${{ github.event.workflow_run.head_branch }}
+            APP_VERSION=${{ github.event.release.tag_name }}
           push: true
           tags: ${{ steps.meta-main.outputs.tags }}
           labels: ${{ steps.meta-main.outputs.labels }}
@@ -84,7 +81,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_NGINX }}
           tags: |
-            type=raw,value=${{ github.event.workflow_run.head_branch }}
+            type=raw,value=${{ github.event.release.tag_name }}
 
       - name: Build and push Docker image
         id: push-nginx
@@ -93,7 +90,7 @@ jobs:
           context: ./infrastructure/nginx/
           file: ./infrastructure/nginx/Dockerfile
           build-args: |
-            APP_VERSION=${{ github.event.workflow_run.head_branch }}
+            APP_VERSION=${{ github.event.release.tag_name }}
           push: true
           tags: ${{ steps.meta-nginx.outputs.tags }}
           labels: ${{ steps.meta-nginx.outputs.labels }}

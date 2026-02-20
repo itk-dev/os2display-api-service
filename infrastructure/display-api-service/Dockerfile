@@ -35,7 +35,7 @@ COPY --chown=deploy:deploy . ./
 RUN APP_ENV=prod composer install --no-dev --optimize-autoloader --classmap-authoritative
 
 # Remove files we do not need to the final image
-RUN rm -rf package* vite.config.js assets
+RUN rm -rf package* vite.config.js
 
 ######## PHP-FPM (API) production image ########
 FROM --platform=$BUILDPLATFORM itkdev/php8.4-fpm:alpine

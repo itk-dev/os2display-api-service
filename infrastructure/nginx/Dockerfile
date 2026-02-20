@@ -1,7 +1,7 @@
 ARG APP_VERSION="develop"
 ARG APP_IMAGE="os2display-api-service"
 
-FROM --platform=$BUILDPLATFORM ghcr.io/itk-dev/${APP_IMAGE}:${APP_VERSION} AS app
+FROM --platform=$BUILDPLATFORM ghcr.io/${APP_IMAGE}:${APP_VERSION} AS app
 
 ################################
 # Nginx production image 

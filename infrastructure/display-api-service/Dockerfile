@@ -38,7 +38,7 @@ COPY --chown=deploy:deploy . ./
 # Composer packages first
 RUN APP_ENV=prod composer install --no-dev --optimize-autoloader --classmap-authoritative
 
-COPY --chown=deploy:deploy --from=assets_builder /app/public/build /app/public/
+COPY --chown=deploy:deploy --from=assets_builder /app/public/build /app/public/build
 
 # Remove files we do not need to the final image
 RUN rm -rf package* vite.config.js

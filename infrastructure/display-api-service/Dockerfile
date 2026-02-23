@@ -1,5 +1,5 @@
 ################################
-# Assets build 
+# Assets build
 ################################
 FROM --platform=$BUILDPLATFORM node:24-alpine AS assets_builder
 LABEL maintainer="ITK Dev <itkdev@mkb.aarhus.dk>"
@@ -45,7 +45,7 @@ RUN rm -rf package* vite.config.js
 
 
 ################################
-# PHP-FPM (API) production image 
+# PHP-FPM (API) production image
 ################################
 FROM --platform=$BUILDPLATFORM itkdev/php8.4-fpm:alpine
 LABEL maintainer="ITK Dev <itkdev@mkb.aarhus.dk>"
@@ -65,6 +65,8 @@ ENV APP_ENV=prod \
 
 # Install the api application.
 COPY --chown=deploy:deploy --from=api_app_builder /app .
+
+# Symfony settings (warmup required to make vite assets work corretly)
 RUN mkdir -p ./config/secrets
 
 CMD [ "docker-entrypoint.sh" ]

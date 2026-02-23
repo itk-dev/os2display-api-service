@@ -1,8 +1,3 @@
-upstream api_backend {
-    server ${NGINX_FPM_SERVICE};
-    keepalive 16;
-}
-
 server {
     listen ${NGINX_PORT};
     listen [::]:${NGINX_PORT};
@@ -63,7 +58,7 @@ server {
 
     # Screen client online check should just serve static files
     location /client/online-check {
-        index index.html index.htm;
+        index index.html;
     }
 
     location = /robots.txt {
@@ -98,7 +93,7 @@ server {
 
     # PHP-FPM handling
     location ~ ^/index\.php(/|$) {
-        fastcgi_pass api_backend;
+        fastcgi_pass ${NGINX_FPM_SERVICE}:${NGINX_FPM_PORT};
         fastcgi_split_path_info ^(.+\.php)(/.*)$;
         include fastcgi_params;
 
@@ -126,7 +121,6 @@ server {
         return 404;
     }
 
-    # Send log message to files symlinked to stdout/stderr.
     sendfile        on;
     keepalive_timeout  65;
 

@@ -67,7 +67,6 @@ ENV APP_ENV=prod \
 COPY --chown=deploy:deploy --from=api_app_builder /app .
 
 # Symfony settings (warmup required to make vite assets work corretly)
-RUN mkdir -p ./config/secrets \
-    bin/console cache:warmup
+RUN mkdir -p ./config/secrets
 
 CMD [ "docker-entrypoint.sh" ]

@@ -69,11 +69,11 @@ class TemplateService
 
             $ulid = Ulid::fromString($templateData->id);
             $template->setId($ulid);
+            $template->setTitle($templateData->title);
 
             $this->entityManager->persist($template);
         }
-
-        if ($update) {
+        else if ($update) {
             $template->setTitle($templateData->title);
         }
 

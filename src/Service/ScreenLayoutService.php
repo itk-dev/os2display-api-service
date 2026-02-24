@@ -72,11 +72,10 @@ class ScreenLayoutService
 
             $ulid = Ulid::fromString($screenLayoutData->id);
             $screenLayout->setId($ulid);
+            $screenLayout->setTitle($screenLayoutData->title);
 
             $this->entityManager->persist($screenLayout);
-        }
-
-        if ($update) {
+        } elseif ($update) {
             $screenLayout->setTitle($screenLayoutData->title);
         }
 

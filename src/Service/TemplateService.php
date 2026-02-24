@@ -72,8 +72,7 @@ class TemplateService
             $template->setTitle($templateData->title);
 
             $this->entityManager->persist($template);
-        }
-        else if ($update) {
+        } elseif ($update) {
             $template->setTitle($templateData->title);
         }
 

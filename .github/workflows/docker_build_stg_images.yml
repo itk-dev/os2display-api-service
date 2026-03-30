@@ -34,13 +34,20 @@ jobs:
         with:
           images: os2display/display-api-service
 
+      - name: Set release timestamp
+        run: |
+          echo "APP_RELEASE_TIMESTAMP=$(echo $(date +%s))" >> $GITHUB_ENV
+          echo "APP_RELEASE_TIME=$(echo $(date))" >> $GITHUB_ENV
+
       - name: Build and push (API)
         uses: docker/build-push-action@v6
         with:
           context: ./infrastructure/display-api-service/
           file: ./infrastructure/display-api-service/Dockerfile
           build-args: |
-            VERSION=${{ env.APP_VERSION }}
+            APP_VERSION=${{ env.APP_VERSION }}
+            APP_RELEASE_TIMESTAMP=${{ env.APP_RELEASE_TIMESTAMP }}
+            APP_RELEASE_TIME=${{ env.APP_RELEASE_TIME }}
           push: true
           tags: ${{ steps.meta-api.outputs.tags }}
           labels: ${{ steps.meta-api.outputs.labels }}

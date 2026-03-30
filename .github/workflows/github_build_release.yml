@@ -107,6 +107,11 @@ jobs:
           tags: |
             type=raw,value=${{ github.ref_name }}
 
+      - name: Set release timestamp
+        run: |
+          echo "APP_RELEASE_TIMESTAMP=$(echo $(date +%s))" >> $GITHUB_ENV
+          echo "APP_RELEASE_TIME=$(echo $(date))" >> $GITHUB_ENV
+
       - name: Build and push Docker image (main)
         id: push-main
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
@@ -115,6 +120,8 @@ jobs:
           file: ./infrastructure/display-api-service/Dockerfile
           build-args: |
             APP_VERSION=${{ github.ref_name }}
+            APP_RELEASE_TIMESTAMP=${{ env.APP_RELEASE_TIMESTAMP }}
+            APP_RELEASE_TIME=${{ env.APP_RELEASE_TIME }}
           push: true
           tags: ${{ steps.meta-main.outputs.tags }}
           labels: ${{ steps.meta-main.outputs.labels }}
@@ -137,6 +144,8 @@ jobs:
           file: ./infrastructure/nginx/Dockerfile
           build-args: |
             APP_VERSION=${{ github.ref_name }}
+            APP_RELEASE_TIMESTAMP=${{ env.APP_RELEASE_TIMESTAMP }}
+            APP_RELEASE_TIME=${{ env.APP_RELEASE_TIME }}
             APP_IMAGE=${{ env.IMAGE_NAME_MAIN }}
           push: true
           pull: true

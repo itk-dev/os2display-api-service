@@ -24,7 +24,7 @@ use Symfony\Component\Stopwatch\Stopwatch;
     name: 'app:checksum:recalculate',
     description: 'Recalculate relation checksums for slides and media entities'
 )]
-class RecalculateChecksumCommand extends Command
+final class RecalculateChecksumCommand extends Command
 {
     private const string OPTION_TENANT = 'tenant';
     private const string OPTION_MODIFIED_AFTER = 'modified-after';

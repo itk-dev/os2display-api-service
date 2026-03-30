@@ -96,6 +96,7 @@ class AzureOidcAuthenticator extends OpenIdLoginAuthenticator implements LoggerA
             }
 
             // Check if user exists already - if not create a user
+            /* @var User|null $user */
             $user = $this->entityManager->getRepository(User::class)->findOneBy(['providerId' => $providerId]);
 
             if (null === $user) {
@@ -114,7 +115,7 @@ class AzureOidcAuthenticator extends OpenIdLoginAuthenticator implements LoggerA
 
             if (self::OIDC_PROVIDER_INTERNAL === $provider) {
                 // Set tenants from claims.
-                $oidcGroups = $claims[$this->oidcInternalClaimGroups] ?? [];
+                $oidcGroups = (array) ($claims[$this->oidcInternalClaimGroups] ?? []);
                 $this->setTenantRoles($user, $oidcGroups);
             }
 

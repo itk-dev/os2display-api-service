@@ -16,7 +16,7 @@ use Doctrine\DBAL\Connection;
  * Extracted from RelationsChecksumListener to allow reuse in console commands
  * and other contexts outside Doctrine lifecycle events.
  */
-class RelationsChecksumCalculator
+final class RelationsChecksumCalculator
 {
     public const array CHECKSUM_TABLES = ['feed_source', 'feed', 'slide', 'media', 'theme', 'template', 'playlist_slide',
         'playlist', 'screen_campaign', 'screen', 'screen_group_campaign', 'screen_group',

@@ -22,12 +22,15 @@ All notable changes to this project will be documented in this file.
 - Aligned with v. 2.5.2.
 - Removed themes.
 - Added command to migrate config.json files.
-- Fix data fetching bug + tests
+- Fix data fetching bug and tests
 - Refactored screen layout commands.
 - Updated infrastructure and image build for mono-repo
 - Moved list components (search and checkboxes) around.
 - Aligned environment variable names.
 - Aligned with v. 2.6.0.
+- Added relations checksum feature flag.
+- Fixes saving issues described in issue where saving resulted in infinite spinner.
+- Fixed loading of routes containing null string values.
 
 ### NB! Prior to 3.x the project was split into separate repositories
 

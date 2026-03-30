@@ -9,23 +9,24 @@
 5. [Taskfile](#taskfile)
 6. [Development setup](#development-setup)
 7. [Production setup](#production-setup)
-8. [Coding standards](#coding-standards)
-9. [Stateless](#stateless)
-10. [OIDC providers](#oidc-providers)
-11. [JWT Auth](#jwt-auth)
-12. [Test](#test)
-13. [API specification and generated code](#api-specification-and-generated-code)
-14. [Configuration](#configuration)
-15. [Rest API & Relationships](#rest-api--relationships)
-16. [Error codes in the Client](#error-codes-in-the-client)
-17. [Preview mode in the Client](#preview-mode-in-the-client)
-18. [Feeds](#feeds)
-19. [Custom Templates](#custom-templates)
-20. [Static Analysis](#static-analysis)
-21. [Upgrade Guide](#upgrade-guide)
-22. [Tenants](#tenants)
-23. [Screen layouts](#screen-layouts)
-24. [Templates](#templates)
+8. [Infrastructure](#infrastructure)
+9. [Coding standards](#coding-standards)
+10. [Stateless](#stateless)
+11. [OIDC providers](#oidc-providers)
+12. [JWT Auth](#jwt-auth)
+13. [Test](#test)
+14. [API specification and generated code](#api-specification-and-generated-code)
+15. [Configuration](#configuration)
+16. [Rest API & Relationships](#rest-api--relationships)
+17. [Error codes in the Client](#error-codes-in-the-client)
+18. [Preview mode in the Client](#preview-mode-in-the-client)
+19. [Feeds](#feeds)
+20. [Custom Templates](#custom-templates)
+21. [Static Analysis](#static-analysis)
+22. [Upgrade Guide](#upgrade-guide)
+23. [Tenants](#tenants)
+24. [Screen layouts](#screen-layouts)
+25. [Templates](#templates)
 
 ## Description
 
@@ -162,6 +163,19 @@ Use the `app:update` command to migrate and update templates to latest version:
 ```shell
 docker compose exec phpfpm bin/console app:update --no-interaction
 ```
+
+## Infrastructure
+
+When a new tag is created a GitHub release is created with built assets.
+
+After this, docker images are built and published in GitHub packages:
+<https://github.com/orgs/os2display/packages?repo_name=display-api-service>
+
+See <https://github.com/itk-dev/os2display-docker-server-v3> for a docker based server setup, that uses these packages.
+
+TODO: Fix links after repository moves and renames.
+
+![Infrastructure overview](docs/infrastructure.png)
 
 ## Coding standards
 

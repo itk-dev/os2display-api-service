@@ -35,6 +35,11 @@ jobs:
           docker compose run --rm node npm install
           docker compose run --rm node npm run build
 
+      - name: Create release file
+        run: |
+          printf "{\n  \"releaseTimestamp\": $(date +%s),\n  \"releaseTime\": \"$(date)\",\n  \"releaseVersion\": \"${{ github.ref_name }}\"\n}" > public/release.json
+          cat public/release.json
+
       - name: Cleanup after install
         run: |
           sudo chown -R runner:runner .

@@ -29,6 +29,8 @@ FROM --platform=$BUILDPLATFORM itkdev/php8.4-fpm:latest AS api_app_builder
 LABEL maintainer="ITK Dev <itkdev@mkb.aarhus.dk>"
 
 ARG APP_VERSION="develop"
+ARG APP_RELEASE_TIMESTAMP=0
+ARG APP_RELEASE_TIME=""
 
 WORKDIR /app
 
@@ -39,6 +41,9 @@ COPY --chown=deploy:deploy . ./
 RUN APP_ENV=prod composer install --no-dev --optimize-autoloader --classmap-authoritative
 
 COPY --chown=deploy:deploy --from=assets_builder /app/public/build /app/public/build
+
+# Create release.json file in public folder
+RUN echo "{\"releaseTimestamp\": $APP_RELEASE_TIMESTAMP, \"releaseTime\": \"$APP_RELEASE_TIME\", \"releaseVersion\": \"$APP_RELEASE_VERSION\"}" > public/release.json
 
 # Remove files we do not need to the final image
 RUN rm -rf package* vite.config.js

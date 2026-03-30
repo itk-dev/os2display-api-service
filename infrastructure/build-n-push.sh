@@ -12,6 +12,8 @@ docker buildx build \
       --no-cache \
       --pull \
       --build-arg APP_VERSION=${APP_VERSION} \
+      --build-arg APP_RELEASE_TIME="$(date)" \
+      --build-arg APP_RELEASE_TIMESTAMP="$(date +%s)" \
       --tag=ghcr.io/itk-dev/os2display-api-service:${APP_VERSION} \
       --file="display-api-service/Dockerfile" ../
 

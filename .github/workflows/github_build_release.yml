@@ -35,9 +35,14 @@ jobs:
           docker compose run --rm node npm install
           docker compose run --rm node npm run build
 
+      - name: Set release timestamp
+        run: |
+          echo "APP_RELEASE_TIMESTAMP=$(echo $(date +%s))" >> $GITHUB_ENV
+          echo "APP_RELEASE_TIME=$(echo $(date))" >> $GITHUB_ENV
+
       - name: Create release file
         run: |
-          printf "{\n  \"releaseTimestamp\": $(date +%s),\n  \"releaseTime\": \"$(date)\",\n  \"releaseVersion\": \"${{ github.ref_name }}\"\n}" > public/release.json
+          printf "{\n  \"releaseTimestamp\": ${{ env.APP_RELEASE_TIMESTAMP }},\n  \"releaseTime\": \"${{ env.APP_RELEASE_TIME }}\",\n  \"releaseVersion\": \"${{ github.ref_name }}\"\n}" > public/release.json
           cat public/release.json
 
       - name: Cleanup after install

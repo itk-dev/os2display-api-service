@@ -1125,7 +1125,6 @@
     </ClassMustBeFinal>
     <ImplicitToStringCast>
       <code><![CDATA[$feed->getId()]]></code>
-      <code><![CDATA[$feed->getId()]]></code>
     </ImplicitToStringCast>
     <MissingOverrideAttribute>
       <code><![CDATA[public function getAdminFormOptions(FeedSource $feedSource): array]]></code>

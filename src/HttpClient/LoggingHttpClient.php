@@ -9,7 +9,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 use Symfony\Contracts\HttpClient\ResponseStreamInterface;
 
-class LoggingHttpClient implements HttpClientInterface
+final class LoggingHttpClient implements HttpClientInterface
 {
     public function __construct(
         private HttpClientInterface $client,
@@ -17,6 +17,7 @@ class LoggingHttpClient implements HttpClientInterface
         private readonly string $logLevel = 'error',
     ) {}
 
+    #[\Override]
     public function request(string $method, string $url, array $options = []): ResponseInterface
     {
         $startTime = microtime(true);
@@ -26,7 +27,7 @@ class LoggingHttpClient implements HttpClientInterface
         try {
             $statusCode = $response->getStatusCode();
         } catch (\Throwable $throwable) {
-            $duration = round((microtime(true) - $startTime) * 1000);
+            $duration = round((microtime(true) - $startTime) * 1000.0);
 
             $this->logger->error('{method} {url} failed after {duration}ms: {error}', [
                 'method' => $method,
@@ -38,7 +39,7 @@ class LoggingHttpClient implements HttpClientInterface
             throw $throwable;
         }
 
-        $duration = round((microtime(true) - $startTime) * 1000);
+        $duration = round((microtime(true) - $startTime) * 1000.0);
 
         $this->logger->log($this->logLevel, '{method} {url} {status_code} {duration}ms', [
             'method' => $method,
@@ -50,11 +51,13 @@ class LoggingHttpClient implements HttpClientInterface
         return $response;
     }
 
+    #[\Override]
     public function stream(ResponseInterface|iterable $responses, ?float $timeout = null): ResponseStreamInterface
     {
         return $this->client->stream($responses, $timeout);
     }
 
+    #[\Override]
     public function withOptions(array $options): static
     {
         $clone = clone $this;

@@ -35,6 +35,7 @@ All notable changes to this project will be documented in this file.
 - Fixed relations checksum test.
 - Optimized release data fetching.
 - Optimized list loading.
+- Removed fixture length check from test.
 
 ### NB! Prior to 3.x the project was split into separate repositories
 

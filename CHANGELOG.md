@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Made dev cert creation run on Linux.
+
 ## [3.0.0-rc7] - 2026-06-23
 
 - Made the application cache backend configurable via the new `CACHE_ADAPTER` env var (`redis`

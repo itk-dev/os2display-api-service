@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 - Made dev cert creation run on Linux.
 - Made Vite honor the `COMPOSE_DOMAIN` environment variable.
+- Fixed nginx serving JSON-LD API responses uncompressed.
 
 ## [3.0.0-rc7] - 2026-06-23
 

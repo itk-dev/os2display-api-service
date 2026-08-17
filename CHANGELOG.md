@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed the screen client paging a collection without end when the API reported more items than it
+  returned; `getAllResultsFromPath` now follows `hydra:next`, with a 100-page backstop (#517).
+- Fixed three client paths that used only the first page of a paginated collection: a screen's screen
+  groups and campaigns, and the playlist preview slides.
+
 ## [3.0.0-rc7] - 2026-06-23
 
 - Made the application cache backend configurable via the new `CACHE_ADAPTER` env var (`redis`

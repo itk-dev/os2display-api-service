@@ -105,7 +105,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Fetch base branch for comparison
-        run: git fetch --depth=1 origin ${{ github.base_ref }}
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git fetch --depth=1 origin "$BASE_REF"
 
       # API Platform 3.4 emits empty header maps as YAML sequences
       # (`headers: []`) — out of spec per OpenAPI 3.x, which mandates a map.
@@ -119,9 +121,11 @@ jobs:
       # in https://github.com/os2display/display-api-service/issues (open
       # an issue when the upgrade is scheduled).
       - name: "Sanitise specs (`headers: []` → `headers: {}`)"
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           mkdir -p .api-spec-tmp
-          git show "origin/${{ github.base_ref }}:public/api-spec-v2.yaml" \
+          git show "origin/$BASE_REF:public/api-spec-v2.yaml" \
             | sed 's/headers: \[\]/headers: {}/g' > .api-spec-tmp/base.yaml
           sed 's/headers: \[\]/headers: {}/g' public/api-spec-v2.yaml \
             > .api-spec-tmp/revision.yaml
@@ -134,6 +138,10 @@ jobs:
           base: .api-spec-tmp/base.yaml
           revision: .api-spec-tmp/revision.yaml
           fail-on: ERR
+          # Compare effective (flattened) schemas so an allOf/$ref restructure
+          # is not reported as removed properties — API Platform emits plenty
+          # of both. Never masks a real diff.
+          flatten-allof: true
           # 0.1.0 added an opt-out `review` input that defaults to true and
           # uploads both specs to oasdiff.com to back a side-by-side review
           # link. Encrypted client-side, but it still sends our API surface to
@@ -150,7 +158,8 @@ jobs:
           revision: .api-spec-tmp/revision.yaml
           format: markdown
           output-to-file: changelog.md
-          # See the note on the breaking step above.
+          # See the notes on the breaking step above.
+          flatten-allof: true
           review: false
 
       # oasdiff's changelog action writes a "No changes detected" placeholder

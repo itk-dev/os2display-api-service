@@ -38,10 +38,10 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Cache vendor
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: vendor
           key: vendor-php8.4-${{ hashFiles('composer.lock') }}
@@ -102,7 +102,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Fetch base branch for comparison
         run: git fetch --depth=1 origin ${{ github.base_ref }}
@@ -129,21 +129,29 @@ jobs:
       - name: Detect breaking changes
         id: breaking
         continue-on-error: true
-        uses: oasdiff/oasdiff-action/breaking@v0.0.44
+        uses: oasdiff/oasdiff-action/breaking@v0.1.13
         with:
           base: .api-spec-tmp/base.yaml
           revision: .api-spec-tmp/revision.yaml
           fail-on: ERR
+          # 0.1.0 added an opt-out `review` input that defaults to true and
+          # uploads both specs to oasdiff.com to back a side-by-side review
+          # link. Encrypted client-side, but it still sends our API surface to
+          # a third party on every API-touching PR, so keep it off; detection
+          # and annotations are unaffected.
+          review: false
 
       - name: Generate changelog
         id: changelog
         continue-on-error: true
-        uses: oasdiff/oasdiff-action/changelog@v0.0.44
+        uses: oasdiff/oasdiff-action/changelog@v0.1.13
         with:
           base: .api-spec-tmp/base.yaml
           revision: .api-spec-tmp/revision.yaml
           format: markdown
           output-to-file: changelog.md
+          # See the note on the breaking step above.
+          review: false
 
       # oasdiff's changelog action writes a "No changes detected" placeholder
       # into changelog.md even when there's no diff, so file existence isn't

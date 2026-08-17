@@ -123,6 +123,7 @@ tasks:
       - task coding-standards:markdown:check
       - task coding-standards:yml:check
       - task coding-standards:env:check
+      - task coding-standards:shell:check
 
   coding-standards:apply:
     desc: "Apply coding standards."
@@ -147,6 +148,14 @@ tasks:
     desc: Validate that every Symfony env variable in config/ is documented in .env.
     cmds:
       - sh scripts/check-env-coverage.sh
+
+  coding-standards:shell:check:
+    desc: |
+      Check that the shell scripts are POSIX sh. The host is assumed to have
+      nothing but Task and docker, and Task invokes these with `sh` — which is
+      dash on Debian/Ubuntu, so bash-only syntax breaks Linux devs (see #508).
+    cmds:
+      - docker compose run --rm shellcheck -s sh $(git ls-files --cached --others --exclude-standard '*.sh')
 
   coding-standards:assets:apply:
     desc: Apply coding standards for assets

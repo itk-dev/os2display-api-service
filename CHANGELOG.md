@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 - Made dev cert creation run on Linux.
 - Made Vite honor the `COMPOSE_DOMAIN` environment variable.
+- Made the shell scripts in `scripts/` POSIX sh and added a ShellCheck CI gate, so bash-only
+  syntax can no longer break developers whose `/bin/sh` is dash.
 
 ## [3.0.0-rc7] - 2026-06-23
 

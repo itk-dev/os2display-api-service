@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 - Made dev cert creation run on Linux.
+- Made Vite honor the `COMPOSE_DOMAIN` environment variable.
 
 ## [3.0.0-rc7] - 2026-06-23
 

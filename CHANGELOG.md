@@ -4,9 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed the screen client paging a collection without end when the API reported more items than it
+  returned; `getAllResultsFromPath` now follows `hydra:next`, with a 100-page backstop (#517).
+- Fixed three client paths that used only the first page of a paginated collection: a screen's screen
+  groups and campaigns, and the playlist preview slides.
 - Made dev cert creation run on Linux.
 - Made Vite honor the `COMPOSE_DOMAIN` environment variable.
 - Fixed nginx serving JSON-LD API responses uncompressed.
+- Updated the GitHub Actions to their current releases.
 
 ## [3.0.0-rc7] - 2026-06-23
 

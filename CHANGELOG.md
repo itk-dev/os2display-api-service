@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
   groups and campaigns, and the playlist preview slides.
 - Made dev cert creation run on Linux.
 - Made Vite honor the `COMPOSE_DOMAIN` environment variable.
+- Fixed nginx serving JSON-LD API responses uncompressed.
 - Updated the GitHub Actions to their current releases.
 
 ## [3.0.0-rc7] - 2026-06-23

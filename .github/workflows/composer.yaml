@@ -35,7 +35,7 @@ jobs:
   composer-validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: |
           docker network create frontend
           docker compose run --rm --no-deps phpfpm composer validate --strict
@@ -43,9 +43,9 @@ jobs:
   composer-normalized:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Cache vendor
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: vendor
           key: vendor-php8.4-${{ hashFiles('composer.lock') }}

@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Replaced the pinned Rector set constants with `withComposerBased()` and `withAttributesSets()`, so the
+  Doctrine/Symfony rule sets follow the installed versions instead of going stale. Applying them dropped
+  an empty `configure()`, switched a route requirement to `Requirement::CATCH_ALL` and moved
+  `Security\Core\Security` to the non-deprecated `SecurityBundle\Security`.
+
 - Enabled Rector's name importing (`withImportNames`), replacing the inline fully-qualified class names
   earlier Rector runs left through the entities, controllers and DTOs with ordinary `use` statements.
 

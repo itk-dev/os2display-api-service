@@ -14,7 +14,7 @@ use App\Repository\UserRoleTenantRepository;
 use App\Service\UserService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Security\Core\Security;
+use Symfony\Bundle\SecurityBundle\Security;
 
 class UserServiceTest extends TestCase
 {

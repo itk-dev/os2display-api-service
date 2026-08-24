@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Removed the `app:utils:convert-config-json-to-env` command, superseded by 2.8's
+  `app:utils:convert-env-to-3x`, which is run pre-upgrade on the 2.x stack and already converts the
+  admin/client `config.json` as part of the full env export. Updated `UPGRADE.md` accordingly.
 - Fixed the screen client paging a collection without end when the API reported more items than it
   returned; `getAllResultsFromPath` now follows `hydra:next`, with a 100-page backstop (#517).
 - Fixed three client paths that used only the first page of a paginated collection: a screen's screen

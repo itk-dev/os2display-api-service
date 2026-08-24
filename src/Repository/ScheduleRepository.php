@@ -14,7 +14,7 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method Schedule[]    findAll()
  * @method Schedule[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
- * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\Tenant\Schedule>
+ * @extends ServiceEntityRepository<Schedule>
  */
 class ScheduleRepository extends ServiceEntityRepository
 {

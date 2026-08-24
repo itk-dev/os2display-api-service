@@ -14,7 +14,7 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method UserRoleTenant[]    findAll()
  * @method UserRoleTenant[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
- * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\UserRoleTenant>
+ * @extends ServiceEntityRepository<UserRoleTenant>
  */
 class UserRoleTenantRepository extends ServiceEntityRepository
 {

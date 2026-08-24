@@ -18,7 +18,7 @@ use Symfony\Component\Uid\Ulid;
  * @method Media[]    findAll()
  * @method Media[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
- * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\Tenant\Media>
+ * @extends ServiceEntityRepository<Media>
  */
 class MediaRepository extends ServiceEntityRepository
 {

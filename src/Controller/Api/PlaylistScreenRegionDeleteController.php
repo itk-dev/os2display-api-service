@@ -7,6 +7,7 @@ namespace App\Controller\Api;
 use App\Repository\PlaylistScreenRegionRepository;
 use App\Utils\ValidationUtils;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 
 #[AsController]
@@ -25,6 +26,6 @@ class PlaylistScreenRegionDeleteController extends AbstractTenantAwareController
 
         $this->playlistScreenRegionRepository->deleteRelations($screenUlid, $regionUlid, $playlistUlid);
 
-        return new JsonResponse(null, \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT);
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 }

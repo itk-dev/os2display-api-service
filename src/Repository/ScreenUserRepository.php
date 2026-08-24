@@ -14,7 +14,7 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method ScreenUser[]    findAll()
  * @method ScreenUser[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
- * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\ScreenUser>
+ * @extends ServiceEntityRepository<ScreenUser>
  */
 class ScreenUserRepository extends ServiceEntityRepository
 {

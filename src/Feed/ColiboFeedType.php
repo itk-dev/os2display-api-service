@@ -11,6 +11,8 @@ use App\Feed\SourceType\Colibo\ApiClient;
 use App\Feed\SourceType\Colibo\SecretsDTO;
 use App\Service\FeedService;
 use FeedIo\Feed\Item;
+use FeedIo\Feed\Item\Author;
+use FeedIo\Feed\Item\Media;
 use FeedIo\Feed\Node\Category;
 use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
@@ -128,7 +130,7 @@ class ColiboFeedType implements FeedTypeInterface
             $updated = $entry->updated ?? $entry->publishDate;
             $item->setLastModified(new \DateTime($updated));
 
-            $author = new Item\Author();
+            $author = new Author();
             $author->setName($entry->publisher->name);
             $item->setAuthor($author);
 
@@ -145,7 +147,7 @@ class ColiboFeedType implements FeedTypeInterface
                 }
 
                 foreach ($galleryItems as $galleryItem) {
-                    $media = new Item\Media();
+                    $media = new Media();
 
                     $large = sprintf('%s/api/files/%s/thumbnail/large', $baseUri, $galleryItem['id']);
                     $media->setUrl($large);

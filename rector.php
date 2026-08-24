@@ -22,11 +22,17 @@ return RectorConfig::configure()
     ->withSets([
         LevelSetList::UP_TO_PHP_82,
         DoctrineSetList::ANNOTATIONS_TO_ATTRIBUTES,
-        DoctrineSetList::DOCTRINE_DBAL_30,
-        DoctrineSetList::DOCTRINE_ORM_214,
+        // DOCTRINE_DBAL_30, DOCTRINE_ORM_214 and SYMFONY_63 (below) were removed by
+        // rector-doctrine/rector-symfony and no longer exist as constants. All three
+        // were one-shot migration sets — "upgrade to DBAL 3.0" / "ORM 2.14" /
+        // "Symfony 6.3" — already applied to this codebase rather than ongoing quality
+        // rules, so there is nothing to carry forward. Their modern replacement is
+        // SetList::COMPOSER_BASED, which derives version sets from composer.json;
+        // adopting it would change what Rector refactors, so it is left for its own PR.
         DoctrineSetList::DOCTRINE_CODE_QUALITY,
         SymfonySetList::ANNOTATIONS_TO_ATTRIBUTES,
-        SymfonySetList::SYMFONY_63,
+        // SYMFONY_63 was dropped alongside the Doctrine version sets above, for the
+        // same reason: it upgraded code *to* Symfony 6.3 and has already been applied.
         SymfonySetList::SYMFONY_CODE_QUALITY,
         SymfonySetList::SYMFONY_CONSTRUCTOR_INJECTION,
     ])

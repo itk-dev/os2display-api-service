@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
   `composer audit` is now down to the two `api-platform/core` advisories that have no 3.x fix.
 - Ignored the skill symlinks `mate discover` writes into `.agents/` and `.claude/skills/`; they point
   into `vendor/`, so they are generated state rather than source.
+- Documented the three Mate log tools missing from `mate/AGENT_INSTRUCTIONS.md` — `monolog-context-search`,
+  `monolog-list-files` and `monolog-list-channels` — which the MCP server has been exposing all along.
 - Ran a full `composer update`, bumping 76 packages (63 runtime, 13 dev) with no major-version changes
   and closing 20 of the 23 advisories reported by `composer audit`. Notable: Twig 3.28.0, the Symfony
   components to 6.4.44, `itk-dev/openid-connect-bundle` 5.1.1, PHPStan 2.2.9 and Rector 2.6.3.

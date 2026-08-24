@@ -13,7 +13,7 @@ use PHPStan\Testing\RuleTestCase;
  */
 class NoSilentCatchRuleTest extends RuleTestCase
 {
-    private const MESSAGE = 'Catch of %s does not log the exception or rethrow it. Silent catches hide '
+    private const string MESSAGE = 'Catch of %s does not log the exception or rethrow it. Silent catches hide '
         .'failures from operators. Log via Psr\Log\LoggerInterface (exception under '
         .'the "exception" context key), rethrow (optionally wrapped), or annotate with '
         .'`@phpstan-ignore logging.silentCatch` and a one-line justification.';

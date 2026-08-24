@@ -16,14 +16,14 @@ namespace App\Logger;
  */
 final class LogField
 {
-    public const REQUEST_ID = 'request_id';
-    public const HTTP_ROUTE = 'http.route';
-    public const HTTP_REQUEST_METHOD = 'http.request.method';
-    public const URL_PATH = 'url.path';
-    public const CLIENT_ADDRESS = 'client.address';
-    public const USER_ID = 'user.id';
-    public const SCREEN_ID = 'screen.id';
-    public const TENANT_KEY = 'tenant.key';
-    public const TRACE_ID = 'trace_id';
-    public const SPAN_ID = 'span_id';
+    public const string REQUEST_ID = 'request_id';
+    public const string HTTP_ROUTE = 'http.route';
+    public const string HTTP_REQUEST_METHOD = 'http.request.method';
+    public const string URL_PATH = 'url.path';
+    public const string CLIENT_ADDRESS = 'client.address';
+    public const string USER_ID = 'user.id';
+    public const string SCREEN_ID = 'screen.id';
+    public const string TENANT_KEY = 'tenant.key';
+    public const string TRACE_ID = 'trace_id';
+    public const string SPAN_ID = 'span_id';
 }

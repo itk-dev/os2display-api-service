@@ -27,7 +27,7 @@ use Monolog\Processor\ProcessorInterface;
  */
 final class SensitiveDataProcessor implements ProcessorInterface
 {
-    private const REDACTED = '[redacted]';
+    private const string REDACTED = '[redacted]';
 
     /**
      * Case-insensitive substrings that mark a key as secret-bearing. Kept narrow
@@ -35,7 +35,7 @@ final class SensitiveDataProcessor implements ProcessorInterface
      *
      * @var list<string>
      */
-    private const SECRET_KEY_FRAGMENTS = [
+    private const array SECRET_KEY_FRAGMENTS = [
         'password', 'passwd', 'secret', 'authorization',
         'api_key', 'apikey', 'token', 'credential', 'bearer',
     ];
@@ -81,13 +81,8 @@ final class SensitiveDataProcessor implements ProcessorInterface
     private function isSecretKey(string $key): bool
     {
         $key = strtolower($key);
-        foreach (self::SECRET_KEY_FRAGMENTS as $fragment) {
-            if (str_contains($key, $fragment)) {
-                return true;
-            }
-        }
 
-        return false;
+        return array_any(self::SECRET_KEY_FRAGMENTS, fn ($fragment) => str_contains($key, $fragment));
     }
 
     private function truncateAddress(string $address): string

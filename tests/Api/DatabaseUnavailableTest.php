@@ -22,7 +22,7 @@ class DatabaseUnavailableTest extends ApiTestCase
 {
     // Port 1 on localhost is never listening, so the connection attempt
     // fails immediately with "connection refused".
-    private const UNREACHABLE_DATABASE_URL = 'mysql://root:password@127.0.0.1:1/db_test?serverVersion=11.4.4-MariaDB';
+    private const string UNREACHABLE_DATABASE_URL = 'mysql://root:password@127.0.0.1:1/db_test?serverVersion=11.4.4-MariaDB';
 
     private ?string $originalEnvDatabaseUrl = null;
     private ?string $originalServerDatabaseUrl = null;

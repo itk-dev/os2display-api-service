@@ -6,7 +6,6 @@ use Rector\CodeQuality\Rector\Class_\InlineConstructorDefaultToPropertyRector;
 use Rector\Config\RectorConfig;
 use Rector\Doctrine\Set\DoctrineSetList;
 use Rector\Php81\Rector\FuncCall\NullToStrictStringFuncCallArgRector;
-use Rector\Set\ValueObject\LevelSetList;
 use Rector\Symfony\Set\SymfonySetList;
 
 return RectorConfig::configure()
@@ -30,12 +29,15 @@ return RectorConfig::configure()
     // DOCTRINE_ORM_214, SYMFONY_63): Rector reads the installed versions from
     // composer.lock and applies the matching upgrade sets itself, so this cannot
     // go stale the way pinned constants did.
+    // Derived from composer.json's `php` constraint rather than a pinned
+    // LevelSetList constant. The pin said 8.2 while composer.json requires >=8.4,
+    // so two PHP versions' worth of modernisation was being skipped silently.
+    ->withPhpSets()
     ->withComposerBased(twig: true, doctrine: true, phpunit: true, symfony: true)
     // Replaces the DoctrineSetList/SymfonySetList ANNOTATIONS_TO_ATTRIBUTES
     // constants. Same rules, current spelling.
     ->withAttributesSets(symfony: true, doctrine: true)
     ->withSets([
-        LevelSetList::UP_TO_PHP_82,
         // DOCTRINE_DBAL_30, DOCTRINE_ORM_214 and SYMFONY_63 (below) were removed by
         // rector-doctrine/rector-symfony and no longer exist as constants. All three
         // were one-shot migration sets — "upgrade to DBAL 3.0" / "ORM 2.14" /

@@ -13,7 +13,7 @@ use PHPStan\Testing\RuleTestCase;
  */
 class ExceptionInContextMustUseExceptionKeyRuleTest extends RuleTestCase
 {
-    private const MESSAGE = 'A Throwable is logged under the "%s" context key; use the "exception" key '
+    private const string MESSAGE = 'A Throwable is logged under the "%s" context key; use the "exception" key '
         .'so it is serialised consistently (and picked up by ExceptionContextProcessor).';
 
     protected function getRule(): Rule

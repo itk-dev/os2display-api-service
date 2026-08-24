@@ -181,7 +181,7 @@ class InstantBook implements InteractiveSlideInterface
             throw new BadRequestException('Resource not set.');
         }
 
-        $start = (new \DateTime())->setTimezone(new \DateTimeZone('UTC'));
+        $start = new \DateTime()->setTimezone(new \DateTimeZone('UTC'));
 
         $siblingEntries = [];
         $updatedWatchedResources = [];
@@ -344,7 +344,7 @@ class InstantBook implements InteractiveSlideInterface
 
         $username = $this->keyVaultService->getValue($configuration['username']);
 
-        $start = (new \DateTime())->setTimezone(new \DateTimeZone('UTC'));
+        $start = new \DateTime()->setTimezone(new \DateTimeZone('UTC'));
         $startPlusDuration = (clone $start)->add(new \DateInterval('PT'.$durationMinutes.'M'))->setTimezone(new \DateTimeZone('UTC'));
 
         $this->assertSlotFree($token, $resource, $start, $startPlusDuration);
@@ -589,13 +589,7 @@ class InstantBook implements InteractiveSlideInterface
 
     public function intervalFree(array $schedule, \DateTime $from, \DateTime $to): bool
     {
-        foreach ($schedule as $scheduleEntry) {
-            if (!($scheduleEntry['startTime'] >= $to || $scheduleEntry['endTime'] <= $from)) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all($schedule, fn ($scheduleEntry) => $scheduleEntry['startTime'] >= $to || $scheduleEntry['endTime'] <= $from);
     }
 
     /**

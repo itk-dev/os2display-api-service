@@ -14,8 +14,8 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 
 class RequestIdSubscriberTest extends TestCase
 {
-    private const HEADER = 'X-Request-Id';
-    private const ATTR = '_request_id';
+    private const string HEADER = 'X-Request-Id';
+    private const string ATTR = '_request_id';
 
     public function testInboundHeaderIsAdoptedAndEchoedOnResponse(): void
     {

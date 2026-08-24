@@ -27,7 +27,7 @@ final class ConnectionErrorDriver extends AbstractDriverMiddleware
      *
      * @var list<int>
      */
-    private const CONNECTION_PRESSURE = [
+    private const array CONNECTION_PRESSURE = [
         1040, // ER_CON_COUNT_ERROR  — too many connections
         1203, // ER_TOO_MANY_USER_CONNECTIONS
         1226, // ER_USER_LIMIT_REACHED
@@ -44,7 +44,7 @@ final class ConnectionErrorDriver extends AbstractDriverMiddleware
      *
      * @var array<int, string>
      */
-    private const ERROR_TYPE = [
+    private const array ERROR_TYPE = [
         1040 => 'too_many_connections',
         1203 => 'too_many_user_connections',
         1226 => 'user_resource_limit',

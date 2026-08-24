@@ -4,28 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Replaced the pinned Rector set constants with `withComposerBased()` and `withAttributesSets()`, so the
-  Doctrine/Symfony rule sets follow the installed versions instead of going stale. Applying them dropped
-  an empty `configure()`, switched a route requirement to `Requirement::CATCH_ALL` and moved
-  `Security\Core\Security` to the non-deprecated `SecurityBundle\Security`.
-
-- Enabled Rector's name importing (`withImportNames`), replacing the inline fully-qualified class names
-  earlier Rector runs left through the entities, controllers and DTOs with ordinary `use` statements.
-
-- Bumped `symfony/ai-mate` and `symfony/ai-monolog-mate-extension` (dev-only) to `^0.12.0`, which allows
-  `mcp/sdk` 0.7.1 and closes CVE-2026-53965; the 0.9 line pinned `mcp/sdk ^0.5`, where no fix exists.
-  `composer audit` is now down to the two `api-platform/core` advisories that have no 3.x fix.
-- Ignored the skill symlinks `mate discover` writes into `.agents/` and `.claude/skills/`; they point
-  into `vendor/`, so they are generated state rather than source.
-- Documented the three Mate log tools missing from `mate/AGENT_INSTRUCTIONS.md` — `monolog-context-search`,
-  `monolog-list-files` and `monolog-list-channels` — which the MCP server has been exposing all along.
-- Ran a full `composer update`, bumping 76 packages (63 runtime, 13 dev) with no major-version changes
-  and closing 20 of the 23 advisories reported by `composer audit`. Notable: Twig 3.28.0, the Symfony
-  components to 6.4.44, `itk-dev/openid-connect-bundle` 5.1.1, PHPStan 2.2.9 and Rector 2.6.3.
-- Removed the `DoctrineSetList::DOCTRINE_DBAL_30`, `DoctrineSetList::DOCTRINE_ORM_214` and
-  `SymfonySetList::SYMFONY_63` sets from `rector.php`; the constants no longer exist in Rector 2.6.
-- Regenerated `phpstan-baseline.neon`, dropping four `property.onlyWritten` entries that PHPStan 2.2
-  no longer reports.
+- Ran a full `composer update` (76 packages, no major-version changes) and bumped the dev-only
+  `symfony/ai-mate` packages to `^0.12.0`, taking `composer audit` from 23 advisories to the two
+  `api-platform/core` ones that have no 3.x fix.
+- Modernised `rector.php`: the PHP, Doctrine and Symfony rule sets are derived from `composer.json` and
+  `composer.lock` instead of pinned constants Rector 2.6 had removed, and class references are imported
+  as `use` statements rather than written inline. Applying the refreshed sets typed the class constants
+  and replaced two search loops with `array_any()`/`array_all()`.
+- Documented the three Mate log tools missing from `mate/AGENT_INSTRUCTIONS.md`.
 - Removed the `app:utils:convert-config-json-to-env` command, superseded by 2.8's
   `app:utils:convert-env-to-3x`, which is run pre-upgrade on the 2.x stack and already converts the
   admin/client `config.json` as part of the full env export. Updated `UPGRADE.md` accordingly.

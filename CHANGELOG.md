@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Ran `npm audit fix`, taking the JavaScript dependencies from 17 advisories to two with no
+  major-version changes; the remaining pair needs the React Router v7 major. Also dropped the unused
+  `react-router` v5 dependency, which sat alongside `react-router-dom` v6 without being imported.
+
 - Ran a full `composer update` (76 packages, no major-version changes) and bumped the dev-only
   `symfony/ai-mate` packages to `^0.12.0`, taking `composer audit` from 23 advisories to the two
   `api-platform/core` ones that have no 3.x fix.

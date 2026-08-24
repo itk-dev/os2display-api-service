@@ -207,7 +207,7 @@ class NotifiedFeedType implements FeedTypeInterface
             'page' => $page,
             'pageSize' => $pageSize,
             'searchProfileIds' => $searchProfileIds,
-            'from' => (new \DateTime(self::LOOKBACK_PERIOD))->format(self::DATETIME_FORMAT),
+            'from' => new \DateTime(self::LOOKBACK_PERIOD)->format(self::DATETIME_FORMAT),
         ];
 
         $res = $this->client->request(

@@ -17,8 +17,8 @@ use Symfony\Component\Uid\Uuid;
  */
 final class RequestIdSubscriber implements EventSubscriberInterface
 {
-    private const ATTR = '_request_id';
-    private const HEADER = 'X-Request-Id';
+    private const string ATTR = '_request_id';
+    private const string HEADER = 'X-Request-Id';
 
     public static function getSubscribedEvents(): array
     {

@@ -142,8 +142,8 @@ class AzureOidcAuthenticatorTest extends TestCase
      */
     public function testAuthenticateRevokesTenantsAbsentFromClaims(): void
     {
-        $keep = (new Tenant())->setTenantKey('Example1');
-        $stale = (new Tenant())->setTenantKey('OldTenant');
+        $keep = new Tenant()->setTenantKey('Example1');
+        $stale = new Tenant()->setTenantKey('OldTenant');
 
         $existing = new User();
         $existing->setEmail('jane@example.test');
@@ -326,7 +326,7 @@ class AzureOidcAuthenticatorTest extends TestCase
             static function (array $tenantKeys) use ($seed): array {
                 $tenants = [];
                 foreach ($tenantKeys as $tenantKey) {
-                    $tenants[$tenantKey] = $seed[$tenantKey] ?? (new Tenant())->setTenantKey($tenantKey);
+                    $tenants[$tenantKey] = $seed[$tenantKey] ?? new Tenant()->setTenantKey($tenantKey);
                 }
 
                 return $tenants;

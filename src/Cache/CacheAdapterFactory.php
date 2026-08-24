@@ -25,7 +25,7 @@ use Symfony\Component\Cache\Adapter\RedisAdapter;
  */
 final readonly class CacheAdapterFactory
 {
-    public const ADAPTERS = ['redis', 'memcached', 'dbal', 'filesystem', 'apcu'];
+    public const array ADAPTERS = ['redis', 'memcached', 'dbal', 'filesystem', 'apcu'];
 
     public function __construct(
         private string $adapter,

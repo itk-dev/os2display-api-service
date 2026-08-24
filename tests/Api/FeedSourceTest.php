@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Api;
 
+use App\Entity\Template;
+use App\Entity\Tenant;
 use App\Entity\Tenant\Feed;
 use App\Entity\Tenant\FeedSource;
 use App\Entity\Tenant\Slide;
+use App\Feed\EventDatabaseApiV2FeedType;
 use App\Tests\AbstractBaseApiTestCase;
 use Symfony\Component\HttpClient\Exception\ClientException;
 
@@ -60,7 +63,7 @@ class FeedSourceTest extends AbstractBaseApiTestCase
             'json' => [
                 'title' => 'Test feed source',
                 'description' => 'This is a test feed source',
-                'feedType' => \App\Feed\EventDatabaseApiV2FeedType::class,
+                'feedType' => EventDatabaseApiV2FeedType::class,
                 'secrets' => [
                     'host' => 'https://www.test.dk',
                     'apikey' => 'test-api-key',
@@ -78,7 +81,7 @@ class FeedSourceTest extends AbstractBaseApiTestCase
             '@type' => 'FeedSource',
             'title' => 'Test feed source',
             'description' => 'This is a test feed source',
-            'feedType' => \App\Feed\EventDatabaseApiV2FeedType::class,
+            'feedType' => EventDatabaseApiV2FeedType::class,
             'secrets' => [
                 'host' => 'https://www.test.dk',
             ],
@@ -147,7 +150,7 @@ class FeedSourceTest extends AbstractBaseApiTestCase
             'json' => [
                 'title' => 'Test feed source',
                 'outputType' => 'This is a test output type',
-                'feedType' => \App\Feed\EventDatabaseApiV2FeedType::class,
+                'feedType' => EventDatabaseApiV2FeedType::class,
                 'secrets' => [
                     'test secret',
                 ],
@@ -172,7 +175,7 @@ class FeedSourceTest extends AbstractBaseApiTestCase
                 'title' => 'Updated title',
                 'description' => 'Updated description',
                 'outputType' => 'This is a test output type',
-                'feedType' => \App\Feed\EventDatabaseApiV2FeedType::class,
+                'feedType' => EventDatabaseApiV2FeedType::class,
                 'secrets' => [
                 ],
             ],
@@ -199,7 +202,7 @@ class FeedSourceTest extends AbstractBaseApiTestCase
                 'title' => 'Test feed source',
                 'description' => 'This is a test feed source',
                 'outputType' => 'This is a test output type',
-                'feedType' => \App\Feed\EventDatabaseApiV2FeedType::class,
+                'feedType' => EventDatabaseApiV2FeedType::class,
                 'secrets' => [
                     'host' => 'https://www.test.dk',
                     'apikey' => 'test-api-key',
@@ -261,7 +264,7 @@ class FeedSourceTest extends AbstractBaseApiTestCase
         $client = $this->getAuthenticatedClient('ROLE_ADMIN');
 
         $manager = static::getContainer()->get('doctrine')->getManager();
-        $tenant = $manager->getRepository(\App\Entity\Tenant::class)->findOneBy(['tenantKey' => $this->tenant->getTenantKey()]);
+        $tenant = $manager->getRepository(Tenant::class)->findOneBy(['tenantKey' => $this->tenant->getTenantKey()]);
 
         $feedSource = new FeedSource();
         $feedSource->setTitle('Feed source with removed feed type');
@@ -320,8 +323,8 @@ class FeedSourceTest extends AbstractBaseApiTestCase
         $client = $this->getAuthenticatedClient('ROLE_ADMIN');
 
         $manager = static::getContainer()->get('doctrine')->getManager();
-        $tenant = $manager->getRepository(\App\Entity\Tenant::class)->findOneBy(['tenantKey' => $this->tenant->getTenantKey()]);
-        $template = $manager->getRepository(\App\Entity\Template::class)->findOneBy([]);
+        $tenant = $manager->getRepository(Tenant::class)->findOneBy(['tenantKey' => $this->tenant->getTenantKey()]);
+        $template = $manager->getRepository(Template::class)->findOneBy([]);
 
         $feedSource = new FeedSource();
         $feedSource->setTitle('Feed source with removed feed type (feed read)');

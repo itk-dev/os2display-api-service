@@ -10,6 +10,7 @@ use App\Utils\ValidationUtils;
 use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 
 #[AsController]
@@ -38,7 +39,7 @@ class PlaylistScreenRegionPutController extends AbstractTenantAwareController
 
         $this->playlistScreenRegionRepository->updateRelations($screenUlid, $regionUlid, $collection, $this->getActiveTenant());
 
-        return new JsonResponse(null, \Symfony\Component\HttpFoundation\Response::HTTP_CREATED);
+        return new JsonResponse(null, Response::HTTP_CREATED);
     }
 
     /**

@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Enabled Rector's name importing (`withImportNames`), replacing the inline fully-qualified class names
+  earlier Rector runs left through the entities, controllers and DTOs with ordinary `use` statements.
+
 - Bumped `symfony/ai-mate` and `symfony/ai-monolog-mate-extension` (dev-only) to `^0.12.0`, which allows
   `mcp/sdk` 0.7.1 and closes CVE-2026-53965; the 0.9 line pinned `mcp/sdk ^0.5`, where no fix exists.
   `composer audit` is now down to the two `api-platform/core` advisories that have no 3.x fix.

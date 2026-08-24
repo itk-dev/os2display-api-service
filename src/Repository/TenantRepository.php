@@ -6,7 +6,6 @@ namespace App\Repository;
 
 use App\Entity\Tenant;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Query\QueryException;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -16,7 +15,7 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method Tenant[]    findAll()
  * @method Tenant[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
- * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\Tenant>
+ * @extends ServiceEntityRepository<Tenant>
  */
 class TenantRepository extends ServiceEntityRepository
 {

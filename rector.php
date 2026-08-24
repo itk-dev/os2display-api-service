@@ -19,6 +19,13 @@ return RectorConfig::configure()
     ->withRules([
         InlineConstructorDefaultToPropertyRector::class,
     ])
+    // Class references land as `use` statements instead of inline FQCNs, which is
+    // what earlier Rector runs left scattered through the entities and controllers
+    // (e.g. `#[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER)]`).
+    //
+    // importShortClasses: false — `@Symfony` does not enable global_namespace_import,
+    // so `\DateTime` and friends stay inline, as they are in Symfony itself.
+    ->withImportNames(importShortClasses: false)
     ->withSets([
         LevelSetList::UP_TO_PHP_82,
         DoctrineSetList::ANNOTATIONS_TO_ATTRIBUTES,

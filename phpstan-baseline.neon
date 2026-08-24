@@ -2521,12 +2521,6 @@ parameters:
 			path: src/Repository/TemplateRepository.php
 
 		-
-			message: '#^Property App\\Repository\\TemplateRepository\:\:\$registry is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: src/Repository/TemplateRepository.php
-
-		-
 			message: '#^Class App\\Repository\\TenantRepository has PHPDoc tag @method for method findBy\(\) parameter \#1 \$criteria with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -2691,12 +2685,6 @@ parameters:
 		-
 			message: '#^Method App\\Security\\AzureOidcAuthenticator\:\:setTenantRoles\(\) has parameter \$oidcGroups with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: src/Security/AzureOidcAuthenticator.php
-
-		-
-			message: '#^Property App\\Security\\AzureOidcAuthenticator\:\:\$providerManager is never read, only written\.$#'
-			identifier: property.onlyWritten
 			count: 1
 			path: src/Security/AzureOidcAuthenticator.php
 
@@ -3555,18 +3543,6 @@ parameters:
 		-
 			message: '#^Method App\\State\\TemplateProvider\:\:__construct\(\) has parameter \$collectionProvider with generic interface ApiPlatform\\State\\ProviderInterface but does not specify its types\: T$#'
 			identifier: missingType.generics
-			count: 1
-			path: src/State/TemplateProvider.php
-
-		-
-			message: '#^Property App\\State\\TemplateProvider\:\:\$collectionProvider is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: src/State/TemplateProvider.php
-
-		-
-			message: '#^Property App\\State\\TemplateProvider\:\:\$entityRepository is never read, only written\.$#'
-			identifier: property.onlyWritten
 			count: 1
 			path: src/State/TemplateProvider.php
 

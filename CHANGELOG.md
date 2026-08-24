@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Ran a full `composer update`, bumping 76 packages (63 runtime, 13 dev) with no major-version changes
+  and closing 20 of the 23 advisories reported by `composer audit`. Notable: Twig 3.28.0, the Symfony
+  components to 6.4.44, `itk-dev/openid-connect-bundle` 5.1.1, PHPStan 2.2.9 and Rector 2.6.3.
+- Removed the `DoctrineSetList::DOCTRINE_DBAL_30`, `DoctrineSetList::DOCTRINE_ORM_214` and
+  `SymfonySetList::SYMFONY_63` sets from `rector.php`; the constants no longer exist in Rector 2.6.
+- Regenerated `phpstan-baseline.neon`, dropping four `property.onlyWritten` entries that PHPStan 2.2
+  no longer reports.
 - Removed the `app:utils:convert-config-json-to-env` command, superseded by 2.8's
   `app:utils:convert-env-to-3x`, which is run pre-upgrade on the 2.x stack and already converts the
   admin/client `config.json` as part of the full env export. Updated `UPGRADE.md` accordingly.

@@ -21,7 +21,7 @@ jobs:
     name: Composer install in prod mode
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup network
         run: docker network create frontend

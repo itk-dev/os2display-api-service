@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file.
 - Removed the `app:utils:convert-config-json-to-env` command, superseded by 2.8's
   `app:utils:convert-env-to-3x`, which is run pre-upgrade on the 2.x stack and already converts the
   admin/client `config.json` as part of the full env export. Updated `UPGRADE.md` accordingly.
+- Fixed the screen client paging a collection without end when the API reported more items than it
+  returned; `getAllResultsFromPath` now follows `hydra:next`, with a 100-page backstop (#517).
+- Fixed three client paths that used only the first page of a paginated collection: a screen's screen
+  groups and campaigns, and the playlist preview slides.
+- Made dev cert creation run on Linux.
+- Made Vite honor the `COMPOSE_DOMAIN` environment variable.
+- Fixed nginx serving JSON-LD API responses uncompressed.
+- Updated the GitHub Actions to their current releases.
 
 ## [3.0.0-rc7] - 2026-06-23
 

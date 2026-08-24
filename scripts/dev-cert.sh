@@ -13,7 +13,8 @@
 # Requires: docker. Uses alpine/openssl in a transient container so no
 # openssl is needed on the host.
 
-set -euo pipefail
+set -eu
+(set -o pipefail) 2>/dev/null && set -o pipefail || true
 
 CERT_DIR="traefik/ssl"
 CERT_FILE="$CERT_DIR/dev.crt"

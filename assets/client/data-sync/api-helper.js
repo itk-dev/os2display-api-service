@@ -1,6 +1,10 @@
 import logger from "../logger/logger";
 import appStorage from "../util/app-storage";
 
+// Backstop so a misbehaving collection cannot page indefinitely. Matches the
+// limit used by the admin's get-all-pages helper.
+const MAX_PAGES = 100;
+
 class ApiHelper {
   endpoint = "";
 
@@ -75,32 +79,58 @@ class ApiHelper {
   /**
    * Gets all resources from the given path.
    *
+   * Pages by following `hydra:view['hydra:next']`, the same termination the
+   * admin uses in components/util/helpers/get-all-pages.js. A missing
+   * `hydra:next` always means there is nothing more to fetch: API Platform
+   * omits it on the last page, on out-of-range pages, and on single-page
+   * collections. Deciding from the links rather than comparing the collected
+   * count against `hydra:totalItems` means a count that disagrees with the rows
+   * actually returned can no longer produce an endless run of requests.
+   *
    * @param {string} path Path to the resources.
    * @param {object} keys Keys that should be passed along with the result.
    * @returns {Promise<*>} Promise with all resources from a path.
    */
   async getAllResultsFromPath(path, keys = {}) {
-    let results = [];
-    let nextPath = `${path}`;
-    let continueLoop = false;
-    let page = 1;
+    const results = [];
+    let nextPath = path;
+    let pagesFetched = 0;
 
-    do {
-      try {
+    try {
+      while (nextPath !== null && pagesFetched < MAX_PAGES) {
         // eslint-disable-next-line no-await-in-loop
         const responseData = await this.getPath(nextPath);
-        results = results.concat(responseData["hydra:member"]);
-        if (results.length < responseData["hydra:totalItems"]) {
-          page += 1;
-          continueLoop = true;
-          nextPath = `${path}?page=${page}`;
-        } else {
-          continueLoop = false;
+        pagesFetched += 1;
+
+        // getPath() logs and returns null when a request fails. Give the whole
+        // collection up rather than handing back part of it as if it were
+        // complete.
+        if (responseData === null) {
+          return {};
         }
-      } catch (err) {
-        return {};
+
+        const members = responseData["hydra:member"] ?? [];
+        results.push(...members);
+
+        // An empty page also stops us, so a collection that offers a next link
+        // without delivering members cannot keep the loop alive.
+        nextPath =
+          members.length === 0
+            ? null
+            : (responseData["hydra:view"]?.["hydra:next"] ?? null);
       }
-    } while (continueLoop);
+
+      if (nextPath !== null) {
+        logger.error(
+          `Stopped paginating ${path} after ${MAX_PAGES} pages; results may be incomplete.`,
+        );
+      }
+    } catch (err) {
+      // Never let a data-sync failure surface on a screen; log and move on.
+      logger.error(`Failed to page through ${path}: ${err.message}`);
+
+      return {};
+    }
 
     return { path, results, keys };
   }

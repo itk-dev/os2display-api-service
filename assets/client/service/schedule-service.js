@@ -68,8 +68,9 @@ class ScheduleService {
    *
    * @param {string} regionId - The region id.
    * @param {object} region - The region content, with playlists and slides, to start scheduling.
+   * @param {boolean} force - Send slides to the region even if the content has not changed.
    */
-  updateRegion(regionId, region) {
+  updateRegion(regionId, region, force = false) {
     logger.info(`ScheduleService: updateRegion(${regionId})`);
 
     if (!region || !regionId) {
@@ -111,7 +112,7 @@ class ScheduleService {
       });
     }
 
-    if (newContent) {
+    if (newContent || force) {
       // Send slides to region.
       this.sendSlides(regionId, slides);
     }

@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed the screen client discarding freshly pulled playlist and slide data whenever anything else
+  on the screen payload had changed (with `TRACK_SCREEN_INFO` enabled, `status.latestRequestDateTime`
+  changes on every pull), so updated playlists only appeared after a device restart.
+
 ## [3.0.0-rc7] - 2026-06-23
 
 - Made the application cache backend configurable via the new `CACHE_ADAPTER` env var (`redis`

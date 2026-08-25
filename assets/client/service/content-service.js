@@ -113,12 +113,8 @@ class ContentService {
     const data = event.detail;
     this.currentScreen = data.screen;
 
-    const screenData = { ...this.currentScreen };
-
     // Remove regionData to only emit screen when it has changed.
-    for (let i = 0; i < screenData.regions.length; i += 1) {
-      delete screenData.regionData;
-    }
+    const { regionData, ...screenData } = this.currentScreen;
 
     const newHash = Base64.stringify(sha256(JSON.stringify(screenData)));
 
@@ -130,12 +126,13 @@ class ContentService {
       ContentService.emitScreen(screenData);
     } else {
       logger.info("Screen has not changed. Not emitting screen.");
+    }
 
-      // eslint-disable-next-line guard-for-in,no-restricted-syntax
-      for (const regionKey in data.screen.regionData) {
-        const region = this.currentScreen.regionData[regionKey];
-        this.scheduleService.updateRegion(regionKey, region);
-      }
+    // Always pass region data on to the schedule service. It does its own
+    // change detection, so unchanged regions are not re-rendered.
+    // eslint-disable-next-line guard-for-in,no-restricted-syntax
+    for (const regionKey in regionData) {
+      this.scheduleService.updateRegion(regionKey, regionData[regionKey]);
     }
   }
 
@@ -152,9 +149,12 @@ class ContentService {
     logger.info(`Event received: regionReady for ${regionId}`);
 
     if (this.currentScreen) {
+      // Force sending slides: the region has just mounted and its content may
+      // already have been registered with the schedule service.
       this.scheduleService.updateRegion(
         regionId,
         this.currentScreen.regionData[regionId],
+        true,
       );
     }
   }

@@ -134,7 +134,7 @@ function Region({ region }) {
         regionContentListener,
       );
     };
-  }, []);
+  }, [regionId]);
 
   // Notify that region is ready.
   useEffect(() => {
@@ -144,16 +144,23 @@ function Region({ region }) {
       },
     });
     document.dispatchEvent(event);
-  }, [region]);
+  }, [region, regionId]);
 
   // Start the progress if no slide is currently playing.
+  // @TODO: `currentSlide` is read but deliberately not a dependency — adding it
+  // would swap queued slides in mid-playback instead of at the end of the
+  // playlist. Needs its own change with client tests.
   useEffect(() => {
     if (newSlides !== null && !currentSlide) {
       setSlides(newSlides);
     }
+    // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, [newSlides]);
 
   // Make sure current slide is set.
+  // @TODO: `currentSlide` is read but deliberately not a dependency — adding it
+  // would re-run this on every slide change. Needs its own change with client
+  // tests.
   useEffect(() => {
     if (!slides) return;
 
@@ -175,6 +182,7 @@ function Region({ region }) {
         return res;
       }, {}),
     );
+    // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, [slides]);
 
   return (

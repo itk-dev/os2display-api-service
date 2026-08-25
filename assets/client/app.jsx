@@ -271,6 +271,9 @@ function App({ preview, previewId }) {
 
       releaseService.stopReleaseCheck();
     };
+    // The boot sequence must run exactly once; re-running it on any of the
+    // read values would restart login, release checks and the token refresh.
+    // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, []);
 
   useEffect(() => {

@@ -94,7 +94,7 @@ function TouchRegion({ region }) {
         regionContentListener,
       );
     };
-  }, []);
+  }, [regionId]);
 
   // Notify that region is ready.
   useEffect(() => {
@@ -104,7 +104,7 @@ function TouchRegion({ region }) {
       },
     });
     document.dispatchEvent(event);
-  }, [region]);
+  }, [region, regionId]);
 
   // Make sure current slide is set.
   useEffect(() => {

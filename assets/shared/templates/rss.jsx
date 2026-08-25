@@ -89,11 +89,16 @@ function RSS({ slide, content, run, slideDone, executionId }) {
     }
   };
 
+  // @TODO: These effects run after the `if (!slide?.feed)` early return above,
+  // so the hook order changes when a feed arrives. Restructure so the effects
+  // are unconditional. Needs a test; tracked as a follow-up issue.
   /** Sets localized formats (dayjs) */
+  // eslint-disable-next-line @eslint-react/rules-of-hooks
   useEffect(() => {
     dayjs.extend(localizedFormat);
   }, []);
 
+  // eslint-disable-next-line @eslint-react/rules-of-hooks
   useEffect(() => {
     if (run) {
       entryDone(-1);

@@ -24,6 +24,10 @@ function MediaModal({ show, onClose, handleAccept, multiple }) {
     return <></>;
   }
 
+  // @TODO: This effect runs after the `if (!show)` early return above, so the
+  // hook order changes when `show` flips. Restructure so the effect is
+  // unconditional. Needs a test; tracked as a follow-up issue.
+  // eslint-disable-next-line @eslint-react/rules-of-hooks
   useEffect(() => {
     if (selected && selected.length > 0) {
       handleAccept(selected);

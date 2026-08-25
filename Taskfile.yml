@@ -119,6 +119,7 @@ tasks:
     desc: "Check coding standards."
     cmds:
       - task coding-standards:assets:check
+      - task coding-standards:eslint:check
       - task coding-standards:php:check
       - task coding-standards:markdown:check
       - task coding-standards:yml:check
@@ -128,6 +129,7 @@ tasks:
     desc: "Apply coding standards."
     cmds:
       - task coding-standards:assets:apply
+      - task coding-standards:eslint:apply
       - task coding-standards:php:apply
       - task coding-standards:markdown:apply
       - task coding-standards:yml:apply
@@ -159,6 +161,16 @@ tasks:
     cmds:
       - docker compose run --rm --volume "$PWD:/md" prettier 'assets/**/*.{css,scss}' --check
       - docker compose run --rm --volume "$PWD:/md" prettier 'assets/**/*.{js,jsx}' --check
+
+  coding-standards:eslint:check:
+    desc: Check assets with ESLint
+    cmds:
+      - task compose -- run --rm node npm run lint:js
+
+  coding-standards:eslint:apply:
+    desc: Apply ESLint autofixes to assets
+    cmds:
+      - task compose -- run --rm node npm run lint:js:fix
 
   coding-standards:markdown:apply:
     desc: "Apply coding standards for Markdown."

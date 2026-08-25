@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
   `@eslint-react` flat config, run via `task coding-standards:eslint:check` and a new CI job.
   `exhaustive-deps` is error-level in `assets/client` and `assets/shared` (outside the slide
   templates) and warn elsewhere pending burn-down.
+- Added JSDoc type checking of the frontend assets with a grow-only strict ratchet
+  (`task code-analysis:assets`): files listed in `.typecheck-strict-paths` are checked with
+  `noImplicitAny`, so an unannotated shape fails the build at every use site.
 
 ## [3.0.0-rc8] - 2026-08-24
 

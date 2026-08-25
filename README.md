@@ -1199,6 +1199,28 @@ task phpstan:generate-baseline
 
 PHPStan [rule level](https://phpstan.org/user-guide/rule-levels) is set to level 6.
 
+### Frontend type checking
+
+The frontend assets are type checked through JSDoc annotations with TypeScript's `checkJs`
+([`tsconfig.checkjs.json`](tsconfig.checkjs.json)):
+
+```shell
+task code-analysis:assets
+```
+
+`noImplicitAny` is on, which means reading or writing through an unannotated shape is an error — so a
+missing `@type` annotation fails the build at every use site. Enforcing that across the whole tree at
+once is not realistic, so the gate is a grow-only ratchet: only files listed in
+[`.typecheck-strict-paths`](.typecheck-strict-paths) fail the build.
+
+**Add every `assets/` file you touch in a PR to `.typecheck-strict-paths` and burn its findings to zero
+in that same PR.** The list only grows.
+
+Two notes on the annotation idiom: typedefs live next to the code as JSDoc, and quoted keys (the JSON-LD
+`"@id"`) need the inline object-literal form — `@typedef {{ "@id": string, ... }} Name` — because
+`@property` cannot express them. Write one `@typedef` per comment block; several in one block silently
+fail to parse.
+
 ## Upgrade Guide
 
 See [UPGRADE.md](UPGRADE.md) for upgrade guides.

@@ -61,7 +61,6 @@ function Select({
     return null;
   };
 
-  /* eslint-disable jsx-a11y/anchor-is-valid */
   return (
     <FormGroup className={formGroupClasses}>
       {label && (
@@ -106,7 +105,6 @@ function Select({
       {error && <div className="invalid-feedback">{textOnError}</div>}
     </FormGroup>
   );
-  /* eslint-enable jsx-a11y/anchor-is-valid */
 }
 
 export default Select;

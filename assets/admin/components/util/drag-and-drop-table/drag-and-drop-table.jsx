@@ -90,8 +90,6 @@ function DragAndDropTable({ columns, data, name, onDropped }) {
     ...draggableStyle,
   });
 
-  /* eslint-disable react/jsx-props-no-spreading */
-  /* eslint-disable jsx-a11y/control-has-associated-label  */
   return (
     <div className="table-responsive">
       <Table id="drag-and-drop-table">
@@ -147,8 +145,6 @@ function DragAndDropTable({ columns, data, name, onDropped }) {
       <small id="aria-label-for-drag-and-drop">{t("help-text")}</small>
     </div>
   );
-  /* eslint-enable react/jsx-props-no-spreading  */
-  /* eslint-enable jsx-a11y/control-has-associated-label  */
 }
 
 export default DragAndDropTable;

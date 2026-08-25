@@ -61,7 +61,6 @@ class ReleaseLoader {
           return this.#releaseData;
         }
 
-        /* eslint-disable-next-line no-console */
         console.warn("Could not find release.json. Returning defaults.");
 
         return DEFAULT_RELEASE;

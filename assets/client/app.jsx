@@ -92,7 +92,6 @@ function App({ preview, previewId }) {
     tokenService.startRefreshing();
   };
 
-  /* eslint-disable no-use-before-define */
   const restartLoginTimeout = () => {
     if (checkLoginTimeoutRef.current !== null) {
       clearTimeout(checkLoginTimeoutRef.current);
@@ -105,7 +104,6 @@ function App({ preview, previewId }) {
       );
     });
   };
-  /* eslint-enable no-use-before-define */
 
   const checkLogin = () => {
     logger.info("Check login.");
@@ -256,7 +254,6 @@ function App({ preview, previewId }) {
       statusService.setStatusInUrl();
     }
 
-    /* eslint-disable-next-line consistent-return */
     return function cleanup() {
       logger.info("Unmounting App.");
 

@@ -67,7 +67,6 @@ function getGroupColumns({ apiCall, infoModalRedirect, infoModalTitle }) {
 
   const columns = [
     {
-      // eslint-disable-next-line react/prop-types
       content: (group) => <ScreensButton group={group} />,
       key: "screens",
       label: t("screens"),

@@ -37,7 +37,6 @@ function getFeedSourcesColumns({ apiCall, infoModalRedirect, infoModalTitle }) {
           )
         );
       },
-      // eslint-disable-next-line react/prop-types
       content: ({ id }) => (
         <ListButton
           apiCall={apiCall}

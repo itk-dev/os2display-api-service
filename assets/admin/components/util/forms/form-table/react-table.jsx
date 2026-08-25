@@ -23,11 +23,9 @@ function ReactTable({ data, columns, updateTableData }) {
         {
           id: "delete",
           accessor: () => "delete",
-          // eslint-disable-next-line react/prop-types
           Cell: ({ row }) => (
             <Button
               variant="danger"
-              // eslint-disable-next-line react/prop-types
               onClick={() => updateTableData(data.splice(row.index, 1))}
             >
               {t("react-table.remove-row")}

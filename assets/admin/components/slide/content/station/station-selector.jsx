@@ -63,7 +63,6 @@ function StationSelector({
 
   useEffect(() => {
     if (!config?.rejseplanenApiKey) {
-      // eslint-disable-next-line no-console
       console.error("rejseplanenApiKey not set.");
       return;
     }

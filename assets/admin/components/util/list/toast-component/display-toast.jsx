@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import "./display-toast.scss";

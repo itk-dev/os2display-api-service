@@ -23,7 +23,6 @@ function getSharedPlaylistColumns() {
     {
       path: "published",
       label: t("published"),
-      // eslint-disable-next-line react/prop-types
       content: ({ published }) => <Publishing published={published} />,
     },
   ];

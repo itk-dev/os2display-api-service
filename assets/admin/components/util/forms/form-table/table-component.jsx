@@ -1,4 +1,3 @@
-/* eslint-disable react/jsx-props-no-spreading */
 import { useTable } from "react-table";
 import EditableCell from "./editable-cell";
 

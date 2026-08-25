@@ -49,7 +49,6 @@ export const renderScreen = (screen) => {
 };
 
 const slideDone = () => {
-  // eslint-disable-next-line no-console
   console.log("slide done");
 };
 
@@ -292,7 +291,6 @@ const CreateScreenTemplate = () => {
       </div>
       {displayJSON && (
         <pre
-          // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(data, null, 2),
           }}

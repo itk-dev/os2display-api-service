@@ -26,7 +26,6 @@ const LoginSidebar = () => {
           <div className="card-body">
             <div
               className="card-text"
-              // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: customHtml }}
             />
           </div>

@@ -84,7 +84,6 @@ function ImageUploader({
     handleImageUpload({ target });
   };
 
-  /* eslint-disable jsx-a11y/control-has-associated-label */
   return (
     // @TODO: error handling
     <div className={error ? "invalid" : ""}>
@@ -186,7 +185,6 @@ function ImageUploader({
       )}
     </div>
   );
-  /* eslint-enable jsx-a11y/control-has-associated-label */
 }
 
 export default ImageUploader;

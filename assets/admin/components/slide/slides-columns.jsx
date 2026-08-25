@@ -47,7 +47,6 @@ function getSlidesColumns({
 
   if (!hideColumns?.template) {
     columns.push({
-      // eslint-disable-next-line react/prop-types
       content: ({ templateInfo }) => (
         <TemplateLabelInList templateInfo={templateInfo} />
       ),
@@ -59,7 +58,6 @@ function getSlidesColumns({
   if (!hideColumns?.playlists) {
     columns.push({
       key: "playlists",
-      // eslint-disable-next-line react/prop-types
       content: ({ onPlaylists }) => (
         <ListButton
           apiCall={apiCall}

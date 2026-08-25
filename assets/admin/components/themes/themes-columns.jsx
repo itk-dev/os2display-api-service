@@ -6,7 +6,7 @@ import ColumnHoc from "../util/column-hoc";
  *
  * @returns {object} The columns for the themes lists.
  */
-function getThemesColumns() {
+function useThemesColumns() {
   const { t } = useTranslation("common", { keyPrefix: "themes-list" });
 
   const columns = [
@@ -20,4 +20,4 @@ function getThemesColumns() {
   return columns;
 }
 
-export default ColumnHoc(getThemesColumns);
+export default ColumnHoc(useThemesColumns);

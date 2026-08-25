@@ -65,7 +65,7 @@ function SlidesButton({ playlist }) {
  * @param {string} props.dataKey The data key for mapping the data.
  * @returns {object} The columns for the playlists lists.
  */
-function getPlaylistColumns() {
+function usePlaylistColumns() {
   const { t } = useTranslation("common", {
     keyPrefix: "playlists-columns",
   });
@@ -96,7 +96,7 @@ function getPlaylistColumns() {
   return columns;
 }
 
-const PlaylistColumns = ColumnHoc(getPlaylistColumns);
-const SelectPlaylistColumns = SelectColumnHoc(getPlaylistColumns);
+const PlaylistColumns = ColumnHoc(usePlaylistColumns);
+const SelectPlaylistColumns = SelectColumnHoc(usePlaylistColumns);
 
 export { SelectPlaylistColumns, PlaylistColumns };

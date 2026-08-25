@@ -8,7 +8,7 @@ import ColumnHoc from "../util/column-hoc";
  *
  * @returns {object} The columns for the users lists.
  */
-function getActivationCodeColumns() {
+function useActivationCodeColumns() {
   const { t } = useTranslation("common", { keyPrefix: "activation-code-list" });
 
   return [
@@ -46,9 +46,9 @@ function getActivationCodeColumns() {
   ];
 }
 
-const ActivationCodeColumns = ColumnHoc(getActivationCodeColumns, true, true);
+const ActivationCodeColumns = ColumnHoc(useActivationCodeColumns, true, true);
 const SelectActivationCodeColumns = SelectColumnHoc(
-  getActivationCodeColumns,
+  useActivationCodeColumns,
   true,
 );
 

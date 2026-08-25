@@ -58,7 +58,7 @@ function ScreensButton({ group }) {
  *
  * @returns {object} The columns for the group lists.
  */
-function getGroupColumns() {
+function useGroupColumns() {
   const { t } = useTranslation("common", { keyPrefix: "groups-columns" });
 
   const columns = [
@@ -72,7 +72,7 @@ function getGroupColumns() {
   return columns;
 }
 
-const GroupColumns = ColumnHoc(getGroupColumns);
-const SelectGroupColumns = SelectColumnHoc(getGroupColumns);
+const GroupColumns = ColumnHoc(useGroupColumns);
+const SelectGroupColumns = SelectColumnHoc(useGroupColumns);
 
 export { SelectGroupColumns, GroupColumns };

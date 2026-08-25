@@ -7,7 +7,7 @@ import UserContext from "../../context/user-context";
 import ContentHeader from "../util/content-header/content-header";
 import ListContext from "../../context/list-context";
 import ContentBody from "../util/content-body/content-body";
-import getThemesColumns from "./themes-columns";
+import ThemesColumns from "./themes-columns";
 import {
   displayError,
   displaySuccess,
@@ -110,7 +110,7 @@ function ThemesList() {
   };
 
   // The columns for the table.
-  const columns = getThemesColumns({
+  const columns = ThemesColumns({
     handleDelete,
     disableCheckbox: ({ onNumberOfSlides }) => onNumberOfSlides > 0,
     disableDelete: ({ onNumberOfSlides }) => onNumberOfSlides > 0,

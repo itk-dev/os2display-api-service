@@ -19,7 +19,7 @@ import DateValue from "../util/date-value";
  * @param {object} props.sortColumns Columns to sort.
  * @returns {object} The columns for the slides lists.
  */
-function getSlidesColumns({
+function useSlidesColumns({
   apiCall,
   infoModalRedirect,
   infoModalTitle,
@@ -116,7 +116,7 @@ function getSlidesColumns({
   return columns;
 }
 
-const SlideColumns = ColumnHoc(getSlidesColumns, true);
-const SelectSlideColumns = SelectColumnHoc(getSlidesColumns, true);
+const SlideColumns = ColumnHoc(useSlidesColumns, true);
+const SelectSlideColumns = SelectColumnHoc(useSlidesColumns, true);
 
 export { SelectSlideColumns, SlideColumns };

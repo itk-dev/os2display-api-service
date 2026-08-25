@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { useDropzone } from "react-dropzone";
 import { useTranslation } from "react-i18next";
 
@@ -52,14 +53,14 @@ function FileDropzone({
         </div>
       </div>
       {fileRejections &&
-        fileRejections.map(({ errors }) => (
-          <>
+        fileRejections.map(({ file, errors }) => (
+          <Fragment key={file.name}>
             {errors.map((e) => (
               <div className="alert-danger p-2 mt-3 mb-3" key={e.code}>
                 {e.message}
               </div>
             ))}
-          </>
+          </Fragment>
         ))}
     </>
   );

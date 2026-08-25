@@ -654,7 +654,7 @@ function PosterSelectorV1({
                                 <tbody>
                                   {singleSelectedEvent?.occurrences?.map(
                                     (occurrence) => (
-                                      <tr>
+                                      <tr key={occurrence["@id"]}>
                                         <td>{occurrence.startDate}</td>
                                         <td>{occurrence.ticketPriceRange}</td>
                                         <td>
@@ -796,7 +796,9 @@ function PosterSelectorV1({
                                   }
                                 >
                                   {numberOptions?.map((i) => (
-                                    <option value={i + 1}>{i + 1}</option>
+                                    <option key={i} value={i + 1}>
+                                      {i + 1}
+                                    </option>
                                   ))}
                                 </select>
                               </label>
@@ -838,7 +840,7 @@ function PosterSelectorV1({
                                     : null;
 
                                 return (
-                                  <tr>
+                                  <tr key={event["@id"]}>
                                     <td>
                                       <img
                                         src={event?.images?.small}

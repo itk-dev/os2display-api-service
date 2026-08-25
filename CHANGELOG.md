@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed the screen client keeping the fallback image on top of playing content, or showing a black
+  screen instead of the fallback, when a region's slides became publishable or expired while the
+  client was running; the scheduling check wrote the recalculated slides to the wrong property, so
+  the empty-content detection kept reading the list from the last data pull.
+
 ## [3.0.0-rc7] - 2026-06-23
 
 - Made the application cache backend configurable via the new `CACHE_ADAPTER` env var (`redis`

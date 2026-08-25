@@ -1,6 +1,16 @@
 import logger from "../logger/logger";
 import appStorage from "../util/app-storage";
 
+// Statuses that mean "try again later" rather than "this failed".
+// 429 is the rate limit response from the reverse proxy, 502/503/504 are
+// emitted while the backend is busy or restarting.
+const RETRYABLE_STATUSES = [429, 502, 503, 504];
+
+// Delays in ms before attempt 2, 3 and 4. A screen client on a multi region
+// layout issues a burst of requests per pull, so a rejected request must be
+// spread out rather than repeated immediately.
+const RETRY_DELAYS = [250, 500, 1000];
+
 // Backstop so a misbehaving collection cannot page indefinitely. Matches the
 // limit used by the admin's get-all-pages helper.
 const MAX_PAGES = 100;
@@ -18,7 +28,43 @@ class ApiHelper {
   }
 
   /**
+   * Wait for the given number of ms.
+   *
+   * @param {number} ms Milliseconds to wait.
+   * @returns {Promise<void>} Promise that resolves when the wait is over.
+   */
+  static delay(ms) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }
+
+  /**
+   * Number of ms to wait before the given attempt, honouring Retry-After.
+   *
+   * @param {object} response The response that was rejected.
+   * @param {number} attempt Zero based index of the attempt that failed.
+   * @returns {number} Milliseconds to wait.
+   */
+  static retryDelay(response, attempt) {
+    const retryAfter = parseInt(
+      response?.headers?.get?.("Retry-After") ?? "",
+      10,
+    );
+
+    if (!Number.isNaN(retryAfter) && retryAfter > 0) {
+      return retryAfter * 1000;
+    }
+
+    // Add jitter to avoid all regions retrying in lockstep.
+    return RETRY_DELAYS[attempt] + Math.floor(Math.random() * 250);
+  }
+
+  /**
    * Get result from path.
+   *
+   * Retryable failures (rate limiting, temporarily unavailable backend) are
+   * retried with backoff. Everything else returns null on the first failure.
    *
    * @param {string} path Path to the resource.
    * @returns {Promise<any>} Promise with data.
@@ -28,6 +74,32 @@ class ApiHelper {
       throw new Error("No path");
     }
 
+    /* eslint-disable no-await-in-loop */
+    for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt += 1) {
+      const result = await this.fetchPath(path);
+
+      if (result.retry === false || attempt === RETRY_DELAYS.length) {
+        return result.data;
+      }
+
+      logger.info(
+        `Retrying (status: ${result.status}): ${this.endpoint + path}`,
+      );
+
+      await ApiHelper.delay(ApiHelper.retryDelay(result.response, attempt));
+    }
+    /* eslint-enable no-await-in-loop */
+
+    return null;
+  }
+
+  /**
+   * Perform a single request against the path.
+   *
+   * @param {string} path Path to the resource.
+   * @returns {Promise<object>} The data, and whether a retry makes sense.
+   */
+  async fetchPath(path) {
     let response;
 
     try {
@@ -43,7 +115,7 @@ class ApiHelper {
       if ((!token || !tenantKey) && (!previewToken || !previewTenant)) {
         logger.error("Token or tenantKey not set.");
 
-        return null;
+        return { data: null, retry: false };
       }
 
       response = await fetch(this.endpoint + path, {
@@ -65,14 +137,26 @@ class ApiHelper {
           }`,
         );
 
-        return null;
+        return {
+          data: null,
+          retry: RETRYABLE_STATUSES.includes(response.status),
+          status: response.status,
+          response,
+        };
       }
 
-      return response.json();
+      try {
+        return { data: await response.json(), retry: false };
+      } catch (parseError) {
+        // A body we cannot parse will not parse on a retry either.
+        logger.error(`Failed to parse response: ${this.endpoint + path}`);
+
+        return { data: null, retry: false };
+      }
     } catch (err) {
       logger.error(`Failed to fetch: ${this.endpoint + path}`);
 
-      return null;
+      return { data: null, retry: true, status: null, response: null };
     }
   }
 
@@ -102,9 +186,9 @@ class ApiHelper {
         const responseData = await this.getPath(nextPath);
         pagesFetched += 1;
 
-        // getPath() logs and returns null when a request fails. Give the whole
-        // collection up rather than handing back part of it as if it were
-        // complete.
+        // getPath() logs and returns null when a request fails, after
+        // exhausting its retries. Give the whole collection up rather than
+        // handing back part of it as if it were complete.
         if (responseData === null) {
           return {};
         }

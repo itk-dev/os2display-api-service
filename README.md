@@ -741,6 +741,29 @@ rather than the friendly Symfony validator message. Keep them ordered as: **PHP-
 The app reads `MEDIA_MAX_UPLOAD_SIZE_MB` per-request, so a deploy / php-fpm worker reload is enough to pick up
 changes; no validator cache clear is needed.
 
+### Rate limiting the API
+
+Nginx rate-limits requests to `index.php` — every `/v2/` API call — per client IP, and answers rejected
+requests with `429 Too Many Requests`. Two knobs control it, both passed to the nginx container via
+compose `environment:` with defaults in `infrastructure/nginx/Dockerfile`:
+
+| Knob | Meaning | Default |
+|---|---|---|
+| `NGINX_RATE_LIMIT` | Sustained rate per client IP (nginx rate string, e.g. `100r/s`) | `100r/s` |
+| `NGINX_RATE_LIMIT_BURST` | Requests allowed to exceed the rate before rejection | `500` |
+
+Size these for the screen client, not for a browser. One pull from a screen on a multi-region layout is
+a burst of one request per region, playlist, slide, template, media and feed — easily a few hundred
+requests within a couple of seconds. Setting the limit too low makes regions and images randomly fail to
+render.
+
+The zone is keyed on the client address, so every screen behind the same NAT shares one bucket. Note also
+that `NGINX_SET_REAL_IP_FROM` (default `172.16.0.0/12`) must cover your load balancer, or nginx never
+restores the real client address and the limit becomes installation-wide.
+
+Both variables are substituted into the nginx config at container start; leaving one undefined produces an
+invalid config and nginx refuses to start.
+
 ### Other configuration options
 
 - See `docs/configuration/openid-connect.md` for configuration of OpenID Connect.

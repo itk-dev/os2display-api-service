@@ -112,17 +112,32 @@ class PullStrategy {
 
       Promise.allSettled(promises)
         .then((results) => {
-          results.forEach((result) => {
-            if (result.status === "fulfilled") {
-              const members = result?.value?.results ?? [];
-              const matches = result?.value?.path?.match(reg) ?? [];
+          results.forEach((result, index) => {
+            // Resolve the region id from the requested path, not the
+            // response: a failed request carries no path, and the region
+            // would then silently disappear from the screen.
+            const regionPath = regions[index];
+            const matches = regionPath?.match(reg) ?? [];
 
-              if (matches?.groups?.regionId) {
-                regionData[matches.groups.regionId] = members.map(
-                  ({ playlist }) => playlist,
-                );
-              }
+            if (!matches?.groups?.regionId) {
+              return;
             }
+
+            const { regionId } = matches.groups;
+
+            if (result.status === "fulfilled" && result?.value?.path) {
+              regionData[regionId] = (result?.value?.results ?? []).map(
+                ({ playlist }) => playlist,
+              );
+
+              return;
+            }
+
+            logger.warn(
+              `Could not load playlists for region ${regionId}. Keeping the region without content.`,
+            );
+
+            regionData[regionId] = [];
           });
 
           resolve(regionData);
@@ -311,7 +326,9 @@ class PullStrategy {
 
       for (const playlistKey of Object.keys(regionDataEntry)) {
         const dataEntryPlaylist = regionDataEntry[playlistKey];
-        const dataEntrySlidesData = dataEntryPlaylist.slidesData;
+        // A playlist whose slides request failed has no slidesData. Without
+        // this guard the whole pull rejects and every region goes blank.
+        const dataEntrySlidesData = dataEntryPlaylist.slidesData ?? {};
 
         for (const slideKey of Object.keys(dataEntrySlidesData)) {
           const slide = cloneDeep(dataEntrySlidesData[slideKey]);
@@ -468,16 +485,22 @@ class PullStrategy {
    */
   start() {
     // Pull now.
-    this.getScreen(this.entryPoint).then(() => {
-      // Make sure nothing is running.
-      this.stop();
+    this.getScreen(this.entryPoint)
+      .catch((err) => {
+        // A failed first pull must not stop the poll interval from being
+        // scheduled, or the screen stays dead until it is reloaded.
+        logger.error(err);
+      })
+      .finally(() => {
+        // Make sure nothing is running.
+        this.stop();
 
-      // Start interval for pull periodically.
-      this.activeInterval = setInterval(
-        () => this.getScreen(this.entryPoint),
-        this.interval,
-      );
-    });
+        // Start interval for pull periodically.
+        this.activeInterval = setInterval(
+          () => this.getScreen(this.entryPoint),
+          this.interval,
+        );
+      });
   }
 
   /**

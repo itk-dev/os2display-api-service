@@ -16,6 +16,10 @@ All notable changes to this project will be documented in this file.
 - Fixed screens losing their playlists and screen groups when the screen form was saved more than
   once (#513).
 - Fixed landscape videos being cropped left and right on portrait screens (#511).
+- Fixed nginx rate limiting rejecting screen client API requests, which left regions randomly blank
+  on multi-region layouts (#507). The limit is operator-tunable via `NGINX_RATE_LIMIT` /
+  `NGINX_RATE_LIMIT_BURST` and answers `429` instead of `503`.
+- Made the screen client retry throttled and temporarily failing API requests with backoff (#507).
 
 ## [3.0.0-rc8] - 2026-08-24
 

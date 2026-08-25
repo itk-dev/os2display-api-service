@@ -148,7 +148,9 @@ Production 3.x deployments run two images, built and published from this reposit
 3. Runtime tuning is independent of the Symfony env surface and is passed to the respective images
    via compose `environment:`:
    - nginx: `NGINX_PORT`, `NGINX_FPM_SERVICE`, `NGINX_FPM_PORT`, `NGINX_MAX_BODY_SIZE`,
-     `NGINX_SET_REAL_IP_FROM`, `NGINX_WEB_ROOT` (defaults in `infrastructure/nginx/Dockerfile`).
+     `NGINX_SET_REAL_IP_FROM`, `NGINX_RATE_LIMIT`, `NGINX_RATE_LIMIT_BURST`, `NGINX_WEB_ROOT`
+     (defaults in `infrastructure/nginx/Dockerfile`). See "Rate limiting the API" in `README.md`
+     before lowering `NGINX_RATE_LIMIT`.
    - PHP-FPM: `PHP_MEMORY_LIMIT`, `PHP_MAX_EXECUTION_TIME`, `PHP_POST_MAX_SIZE`,
      `PHP_UPLOAD_MAX_FILESIZE`, `PHP_PM_*`, `PHP_OPCACHE_*` (consumed by the `itkdev/php8.4-fpm`
      base image).

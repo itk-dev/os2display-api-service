@@ -1,3 +1,14 @@
+# Rate limiting zone. Defined here rather than in nginx.conf because only
+# /etc/nginx/templates/* is run through the envsubst pass at container start.
+# Size the rate for the real workload: one pull from a screen client on a
+# multi region layout is a burst of one request per region, playlist, slide,
+# template, media and feed (#507).
+limit_req_zone $binary_remote_addr zone=php_limit:10m rate=${NGINX_RATE_LIMIT};
+
+# 429 rather than the default 503, so clients can tell throttling apart from
+# a genuinely unavailable backend.
+limit_req_status 429;
+
 upstream api_backend {
     server ${NGINX_FPM_SERVICE}:${NGINX_FPM_PORT};
     keepalive 16;
@@ -106,7 +117,7 @@ server {
         fastcgi_split_path_info ^(.+\.php)(/.*)$;
         include fastcgi_params;
 
-        limit_req zone=php_limit burst=20 nodelay;
+        limit_req zone=php_limit burst=${NGINX_RATE_LIMIT_BURST} nodelay;
 
         # Increase buffer sizes for large responses
         fastcgi_buffers 16 32k;

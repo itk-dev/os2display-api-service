@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed the screen edit form silently deleting all playlist and screen group relations: a
+  background refetch of the screen re-initialized the form from the server response and dropped
+  the client-only playlist/region selections, so the next save submitted empty regions. The form
+  now initializes once per screen and omits `regions`/`groups` from the payload when it does not
+  hold them.
+
 ## [3.0.0-rc7] - 2026-06-23
 
 - Made the application cache backend configurable via the new `CACHE_ADAPTER` env var (`redis`

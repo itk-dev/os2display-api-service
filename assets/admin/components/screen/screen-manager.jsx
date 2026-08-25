@@ -44,6 +44,7 @@ function ScreenManager({
 }) {
   const { t } = useTranslation("common", { keyPrefix: "screen-manager" });
   const saveWithoutCloseRef = useRef(false);
+  const initializedForRef = useRef(null);
   const navigate = useNavigate();
   const headerText =
     saveMethod === "PUT" ? t("edit-screen-header") : t("create-screen-header");
@@ -87,14 +88,29 @@ function ScreenManager({
    * @param {object} props.target - Event target.
    */
   const handleInput = ({ target }) => {
-    const localFormStateObject = JSON.parse(JSON.stringify(formStateObject));
-    set(localFormStateObject, target.id, target.value);
-    setFormStateObject(localFormStateObject);
+    setFormStateObject((previousFormStateObject) => {
+      const localFormStateObject = JSON.parse(
+        JSON.stringify(previousFormStateObject),
+      );
+      set(localFormStateObject, target.id, target.value);
+      return localFormStateObject;
+    });
   };
 
   /** Set loaded data into form state. */
   useEffect(() => {
     if (initialState) {
+      // Only initialize the form once per screen. Any mutation invalidating the
+      // "Screens" tag triggers a background refetch of the screen, which hands
+      // us a new object for the same screen. Re-initializing from it would
+      // discard the client only playlists/regions/inScreenGroups values the
+      // form has built up, and the next save would then wipe them server side.
+      const initializedFor = initialState["@id"] ?? saveMethod;
+      if (initializedForRef.current === initializedFor) {
+        return;
+      }
+      initializedForRef.current = initializedFor;
+
       const localFormStateObject = JSON.parse(JSON.stringify(initialState));
       if (localFormStateObject.orientation) {
         localFormStateObject.orientation = orientationOptions.filter(
@@ -111,7 +127,7 @@ function ScreenManager({
 
       setFormStateObject(localFormStateObject);
     }
-  }, [initialState]);
+  }, [initialState, saveMethod]);
 
   /**
    * Map group ids for submitting.
@@ -233,24 +249,39 @@ function ScreenManager({
       enableColorSchemeChange,
     } = localFormStateObject;
 
+    const screenInput = {
+      title,
+      description,
+      size,
+      modifiedBy,
+      createdBy,
+      layout,
+      location,
+      enableColorSchemeChange,
+      resolution: getResolution(localFormStateObject),
+      orientation: getOrientation(localFormStateObject),
+    };
+
+    // regions and groups are only present in the form state once the child
+    // components have loaded them. Leaving them out of the payload is a no-op
+    // server side, whereas sending empty arrays deletes every playlist and
+    // group relation on the screen.
+    if (Array.isArray(localFormStateObject.inScreenGroups)) {
+      screenInput.groups = mapGroups(localFormStateObject);
+    }
+
+    if (
+      Array.isArray(localFormStateObject.playlists) &&
+      Array.isArray(localFormStateObject.regions)
+    ) {
+      screenInput.regions = mapPlaylistsWithRegion(
+        localFormStateObject.playlists,
+        localFormStateObject.regions,
+      );
+    }
+
     const saveData = {
-      screenScreenInputJsonld: JSON.stringify({
-        title,
-        description,
-        size,
-        modifiedBy,
-        createdBy,
-        layout,
-        location,
-        enableColorSchemeChange,
-        resolution: getResolution(localFormStateObject),
-        groups: mapGroups(localFormStateObject),
-        orientation: getOrientation(localFormStateObject),
-        regions: mapPlaylistsWithRegion(
-          localFormStateObject.playlists,
-          localFormStateObject.regions,
-        ),
-      }),
+      screenScreenInputJsonld: JSON.stringify(screenInput),
     };
 
     if (saveMethod === "POST") {

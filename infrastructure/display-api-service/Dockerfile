@@ -117,6 +117,12 @@ LABEL org.opencontainers.image.authors="ITK Dev <itkdev@ba.aarhus.dk>" \
 # App_KernelProdContainer.preload.php exists by the time OPcache preloads.
 # PHP_OPCACHE_PRELOAD_USER is left at the base image's default (`deploy`),
 # which matches the user php-fpm's master runs as here (see USER below).
+# The upload knobs are not left to the base image (2M/8M): they must stay at or
+# above MEDIA_MAX_UPLOAD_SIZE_MB (`.env`, 200) and NGINX_MAX_BODY_SIZE
+# (infrastructure/nginx/Dockerfile, 200m), or an editor uploading a file the
+# admin says is allowed gets a 413 or a discarded body instead. post_max_size is
+# the larger of the two so the multipart envelope and form fields still fit. An
+# operator raising one of the three must raise all three.
 ENV APP_ENV=prod \
     PHP_OPCACHE_ENABLED=1 \
     PHP_OPCACHE_VALIDATE_TIMESTAMPS=0 \
@@ -124,6 +130,8 @@ ENV APP_ENV=prod \
     PHP_OPCACHE_MEMORY_CONSUMPTION=256 \
     PHP_OPCACHE_INTERNED_STRINGS_BUFFER=32 \
     PHP_OPCACHE_PRELOAD=/app/config/preload.php \
+    PHP_UPLOAD_MAX_FILESIZE=200M \
+    PHP_POST_MAX_SIZE=210M \
     PHP_PM_TYPE="dynamic" \
     PHP_PM_MAX_CHILDREN="24" \
     PHP_PM_MAX_REQUESTS="0" \

@@ -736,7 +736,7 @@ rather than the friendly Symfony validator message. Keep them ordered as: **PHP-
 |---|---|---|
 | App (Symfony validator + Admin UI) | `MEDIA_MAX_UPLOAD_SIZE_MB` (megabytes, integer) | `.env` (committed default `200`) — override in `.env.local` for development or in the deployment environment for production |
 | Nginx request body | `NGINX_MAX_BODY_SIZE` (nginx size string, e.g. `200m`) | `docker-compose.yml`; image default is `200m` (set in `infrastructure/nginx/Dockerfile`) |
-| PHP-FPM upload + post body | `PHP_UPLOAD_MAX_FILESIZE`, `PHP_POST_MAX_SIZE` (PHP size strings, e.g. `200M`) | Operator-managed env vars on the php-fpm container (supported by the `itkdev/php8.4-fpm` base image). Not set in this repo by default — base image defaults apply unless overridden |
+| PHP-FPM upload + post body | `PHP_UPLOAD_MAX_FILESIZE`, `PHP_POST_MAX_SIZE` (PHP size strings, e.g. `200M`) | `docker-compose.yml`; image defaults are `200M` / `210M` (set in `infrastructure/display-api-service/Dockerfile`, consumed by the `itkdev/php8.4-fpm` base image). `PHP_POST_MAX_SIZE` is deliberately the larger of the two, so the multipart envelope and form fields around the file still fit |
 
 The app reads `MEDIA_MAX_UPLOAD_SIZE_MB` per-request, so a deploy / php-fpm worker reload is enough to pick up
 changes; no validator cache clear is needed.

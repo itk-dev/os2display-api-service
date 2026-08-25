@@ -27,6 +27,7 @@ services:
             $removeProcessor: '@api_platform.doctrine.orm.state.remove_processor'
             $trackScreenInfo: '%env(bool:TRACK_SCREEN_INFO)%'
             $trackScreenInfoUpdateIntervalSeconds: '%env(TRACK_SCREEN_INFO_UPDATE_INTERVAL_SECONDS)%'
+            $mediaMaxUploadSizeMb: '%env(int:MEDIA_MAX_UPLOAD_SIZE_MB)%'
 
     _instanceof:
         App\Feed\FeedTypeInterface:

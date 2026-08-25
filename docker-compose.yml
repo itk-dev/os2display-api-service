@@ -53,6 +53,10 @@ services:
       - PHP_XDEBUG_MODE=${PHP_XDEBUG_MODE:-off}
       - PHP_MAX_EXECUTION_TIME=30
       - PHP_MEMORY_LIMIT=256M
+      # Must stay >= MEDIA_MAX_UPLOAD_SIZE_MB (.env) and NGINX_MAX_BODY_SIZE below;
+      # post_max_size leaves room for the multipart envelope around the file.
+      - PHP_UPLOAD_MAX_FILESIZE=200M
+      - PHP_POST_MAX_SIZE=210M
       - DOCKER_HOST_DOMAIN=${COMPOSE_DOMAIN}
       - PHP_IDE_CONFIG=serverName=localhost
     depends_on:
@@ -79,7 +83,7 @@ services:
       NGINX_FPM_PORT: 9000
       NGINX_WEB_ROOT: /app/public
       NGINX_PORT: 8080
-      NGINX_MAX_BODY_SIZE: 5M
+      NGINX_MAX_BODY_SIZE: 200m
       NGINX_SET_REAL_IP_FROM: 172.16.0.0/12
     healthcheck:
       # $$NGINX_PORT escapes compose-time interpolation; the variable is

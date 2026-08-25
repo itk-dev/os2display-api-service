@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { toast } from "react-toastify";
 import dayjs from "dayjs";
+import i18next from "i18next";
 import "./display-toast.scss";
 
 /** @param {string} text The toast display text */
@@ -30,14 +31,19 @@ export function displayError(errorString, error) {
   if (error?.data && typeof error.data === "object") {
     errorText = error.data["hydra:description"] || error.data.message || "";
   }
-  // RTK Query couldn't JSON-parse the response — typically an HTML error page
-  // from nginx/php-fpm rejecting the request before Symfony (e.g. 413 when the
-  // upload exceeds the proxy body-size limit). Show the HTTP status instead
-  // of leaking the "Unexpected token '<'" SyntaxError to the user.
+  // A 413 means the body was rejected for its size — either by nginx before
+  // Symfony was reached (RTK Query then hands us a PARSING_ERROR on the HTML
+  // error page) or by MediaController on a post_max_size overflow. Neither the
+  // raw status nor the "Unexpected token '<'" SyntaxError tells an editor what
+  // to do about it.
+  if (!errorText && (error?.status === 413 || error?.originalStatus === 413)) {
+    errorText = i18next.t("common:error-messages.upload-too-large");
+  }
   if (!errorText && error?.status === "PARSING_ERROR") {
-    errorText = error.originalStatus
-      ? `HTTP ${error.originalStatus}`
-      : "Server returned an unexpected response";
+    errorText = i18next.t("common:error-messages.unexpected-server-response");
+    if (error.originalStatus) {
+      errorText = `${errorText} (${error.originalStatus})`;
+    }
   }
   if (!errorText && error?.error) {
     errorText = error.error;

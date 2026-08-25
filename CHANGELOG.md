@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Aligned the three media upload size limits: the shipped php-fpm image and the dev stack now set
+  `PHP_UPLOAD_MAX_FILESIZE`/`PHP_POST_MAX_SIZE` instead of inheriting the base image's 2M/8M, and
+  the dev nginx body limit matches the `200m` production default, so uploads up to
+  `MEDIA_MAX_UPLOAD_SIZE_MB` actually reach the validator.
+- Replaced the unreadable upload errors in the Admin: a body rejected for its size now yields a
+  `413` with a readable message instead of `400 "file" is required`, and the toast shows a
+  translated explanation rather than the raw `HTTP 413`.
+
 ## [3.0.0-rc7] - 2026-06-23
 
 - Made the application cache backend configurable via the new `CACHE_ADAPTER` env var (`redis`

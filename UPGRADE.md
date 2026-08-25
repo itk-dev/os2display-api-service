@@ -151,6 +151,10 @@ Production 3.x deployments run two images, built and published from this reposit
    - PHP-FPM: `PHP_MEMORY_LIMIT`, `PHP_MAX_EXECUTION_TIME`, `PHP_POST_MAX_SIZE`,
      `PHP_UPLOAD_MAX_FILESIZE`, `PHP_PM_*`, `PHP_OPCACHE_*` (consumed by the `itkdev/php8.4-fpm`
      base image).
+   - The upload knobs must be raised together: `NGINX_MAX_BODY_SIZE`, `PHP_UPLOAD_MAX_FILESIZE`
+     and `PHP_POST_MAX_SIZE` all have to stay at or above `MEDIA_MAX_UPLOAD_SIZE_MB`, or media
+     uploads the Admin advertises as allowed are rejected before the validator sees them. A
+     deployment that pins its own values keeps them — the new image defaults do not reach it.
 4. Screen client auto-upgrade: nothing to do. The images ship `release.json` both at the new
    location (site root) and at the deprecated `/client/release.json` path polled by 2.x clients, so
    running screens reload into the 3.0 client on their next release check (every 10 minutes by

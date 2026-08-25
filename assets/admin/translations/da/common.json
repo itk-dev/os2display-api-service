@@ -1243,5 +1243,9 @@
     "screen-groups-modal-title": "Skærmgrupper",
     "campaigns-modal-title": "Kampagner",
     "active": "Aktiv"
+  },
+  "error-messages": {
+    "upload-too-large": "Filen er for stor til at blive uploadet. Prøv med en mindre fil.",
+    "unexpected-server-response": "Serveren svarede uventet. Prøv igen."
   }
 }

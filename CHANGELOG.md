@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed slideshow animation changes not taking effect on the screen client without a reload: the
+  keyframes are now rendered from the slide content instead of being injected into the document
+  once on mount, are named per slide instance so concurrent slideshows no longer share one rule,
+  and slides set to no animation no longer inherit a stale animation.
+
 ## [3.0.0-rc7] - 2026-06-23
 
 - Made the application cache backend configurable via the new `CACHE_ADAPTER` env var (`redis`

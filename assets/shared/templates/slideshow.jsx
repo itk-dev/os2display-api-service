@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   getAllMediaUrlsFromField,
   ThemeStyles,
@@ -60,7 +60,10 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
   const fadeDuration = 1000;
   const fadeSafeMargin = 50;
 
-  const animationName = "animationForImage";
+  const animationName = `animationForImage-${(executionId ?? "preview").replace(
+    /[^a-zA-Z0-9_-]/g,
+    "",
+  )}`;
   const animationDuration =
     imageDurationInMilliseconds + (fadeEnabled ? fadeDuration * 2 : 0);
 
@@ -156,13 +159,21 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
     }
   }
 
+  // The animation contains an element of random, so it cannot live in the .scss
+  // file. Memoized to keep the random variants stable across re-renders, while
+  // still following changes to the animation setting.
+  const animationCss = useMemo(
+    () => getCurrentAnimation(animation),
+    [animation, animationName],
+  );
+
   // Get image style for the given image url.
   const getImageStyle = (imageUrl, enableAnimation, localAnimationDuration) => {
     const imageStyle = {
       backgroundImage: `url(${imageUrl})`,
     };
 
-    if (enableAnimation) {
+    if (enableAnimation && animationCss) {
       imageStyle.animation = `${animationName} ${localAnimationDuration}ms`;
     }
 
@@ -170,19 +181,6 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
   };
 
   useEffect(() => {
-    // Setup animation
-    if (animation) {
-      // Adds the animation to the stylesheet. because there is an element of random, we cannot have it in the .scss file.
-      const styleSheet = document.styleSheets[0];
-      const currentAnimation = getCurrentAnimation(animation);
-      if (currentAnimation !== null) {
-        styleSheet.insertRule(
-          getCurrentAnimation(animation),
-          styleSheet.cssRules.length,
-        );
-      }
-    }
-
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
@@ -314,6 +312,9 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
           <img className={logoClasses.join(" ")} src={logoUrl} alt="" />
         )}
       </div>
+
+      {/* Rendered here, so the keyframes follow changes to the slide content. */}
+      {animationCss && <style>{animationCss}</style>}
 
       <ThemeStyles id={executionId} css={slide?.theme?.cssStyles} />
     </>

@@ -69,7 +69,7 @@ class ApiHelper {
       }
 
       return response.json();
-    } catch (err) {
+    } catch {
       logger.error(`Failed to fetch: ${this.endpoint + path}`);
 
       return null;

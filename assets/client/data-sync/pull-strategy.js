@@ -188,7 +188,7 @@ class PullStrategy {
     // Fetch screen
     try {
       screen = await this.apiHelper.getPath(screenPath);
-    } catch (err) {
+    } catch {
       logger.warn(
         `Screen (${screenPath}) not loaded. Aborting content update.`,
       );
@@ -312,7 +312,7 @@ class PullStrategy {
         for (const slideKey of Object.keys(dataEntrySlidesData)) {
           const slide = cloneDeep(dataEntrySlidesData[slideKey]);
 
-          let previousSlide = null;
+          let previousSlide;
 
           // Find the slide in previous data for comparing relationsChecksum values.
           if (

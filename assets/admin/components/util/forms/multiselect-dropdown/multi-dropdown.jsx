@@ -121,7 +121,7 @@ function MultiSelectComponent({
    * @returns {Array} Array of selected values without duplicates
    */
   const addOrRemoveNewEntryToSelected = (multiselectData) => {
-    let selectedOptions = [];
+    let selectedOptions;
     const idsOfSelectedEntries = multiselectData.map(({ value }) => value);
     const selectedAndOptions = [...selected, ...options];
     if ("@id" in selectedAndOptions[0]) {

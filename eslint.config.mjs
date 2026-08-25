@@ -22,6 +22,9 @@ export default [
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
     rules: {
+      // Destructuring a prop out before spreading the rest is the idiomatic
+      // omit-a-prop pattern here; ESLint 10 flipped this default to false.
+      "no-unused-vars": ["error", { ignoreRestSiblings: true }],
       // Modern-idiom guidance, too noisy to gate on a legacy codebase.
       // Revisit per-directory once error-level findings are at zero.
       "@eslint-react/set-state-in-effect": "off",

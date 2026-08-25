@@ -113,7 +113,10 @@ function TouchRegion({ region }) {
     // Add or remove refs.
     setNodeRefs((prevNodeRefs) =>
       slides.reduce((res, element) => {
+        // One ref per slide for react-transition-group's nodeRef; useRef
+        // cannot be called from inside a reducer.
         res[element.executionId] =
+          // eslint-disable-next-line @eslint-react/no-create-ref
           prevNodeRefs[element.executionId] || createRef();
         return res;
       }, {}),

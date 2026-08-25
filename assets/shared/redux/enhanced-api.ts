@@ -78,7 +78,7 @@ export const enhancedApi = generatedApi.enhanceEndpoints({
         invalidatesTags: ["region"],
       };
 
-      if (invalidatesTagsForEndpoints.hasOwnProperty(key)) {
+      if (Object.hasOwn(invalidatesTagsForEndpoints, key)) {
         enhancedEndpoint.invalidatesTags = invalidatesTagsForEndpoints[key];
       }
 

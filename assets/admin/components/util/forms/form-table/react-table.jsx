@@ -23,6 +23,9 @@ function ReactTable({ data, columns, updateTableData }) {
         {
           id: "delete",
           accessor: () => "delete",
+          // `Cell` is react-table's column renderer API, not a nested
+          // component definition.
+          // eslint-disable-next-line @eslint-react/no-nested-component-definitions
           Cell: ({ row }) => (
             <Button
               variant="danger"

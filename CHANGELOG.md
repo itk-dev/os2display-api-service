@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed the webfont reference in the Rejseplanen slide template, which pointed at a
+  non-existent file and made every client and preview load log a 404 for
+  `fontsubik-regular.woff`.
+
 ## [3.0.0-rc7] - 2026-06-23
 
 - Made the application cache backend configurable via the new `CACHE_ADAPTER` env var (`redis`

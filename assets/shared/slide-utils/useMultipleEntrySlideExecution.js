@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 /**
  * Hook to manage slide execution for templates that cycle through
@@ -13,6 +13,8 @@ import { useEffect, useRef, useState } from "react";
  * @param {object} options.slide The slide object.
  * @param {Function} options.slideDone Callback when cycling completes.
  * @param {number} options.entryDuration Duration per entry in ms.
+ * @returns {{currentEntry: object|null, entryIndex: number|null}} The entry
+ *   being shown and its index, both null until cycling starts.
  */
 function useMultipleEntrySlideExecution({
   entries,
@@ -21,7 +23,9 @@ function useMultipleEntrySlideExecution({
   slideDone,
   entryDuration,
 }) {
-  const [entryIndex, setEntryIndex] = useState(0);
+  // null means "not started" — an initial 0 would be indistinguishable from
+  // showing the first entry, so consumers could not anchor timing to run.
+  const [entryIndex, setEntryIndex] = useState(null);
   const [currentEntry, setCurrentEntry] = useState(null);
 
   // Refs to avoid stale closures (same pattern as useBaseSlideExecution)
@@ -30,13 +34,23 @@ function useMultipleEntrySlideExecution({
   const entriesRef = useRef(entries);
   const entryDurationRef = useRef(entryDuration);
 
-  slideRef.current = slide;
-  slideDoneRef.current = slideDone;
-  entriesRef.current = entries;
-  entryDurationRef.current = entryDuration;
+  // Layout effects run before passive effects on the same commit, so the refs
+  // are current when the cycling effect below reads them synchronously.
+  useLayoutEffect(() => {
+    slideRef.current = slide;
+    slideDoneRef.current = slideDone;
+    entriesRef.current = entries;
+    entryDurationRef.current = entryDuration;
+  });
 
   useEffect(() => {
-    if (!run || !entriesRef.current?.length) return;
+    if (!run) {
+      setEntryIndex(null);
+      setCurrentEntry(null);
+      return;
+    }
+
+    if (!entriesRef.current?.length) return;
 
     let timeoutId = null;
     let stopped = false;

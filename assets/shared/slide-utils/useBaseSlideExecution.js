@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 /**
  * Hook to manage slide execution lifecycle.
@@ -17,9 +17,13 @@ function useBaseSlideExecution({ slide, run, slideDone, duration }) {
   const slideDoneRef = useRef(slideDone);
   const durationRef = useRef(duration);
 
-  slideRef.current = slide;
-  slideDoneRef.current = slideDone;
-  durationRef.current = duration;
+  // Layout effects run before passive effects on the same commit, so the refs
+  // are current when the timer effect below reads them synchronously.
+  useLayoutEffect(() => {
+    slideRef.current = slide;
+    slideDoneRef.current = slideDone;
+    durationRef.current = duration;
+  });
 
   useEffect(() => {
     if (!run) return;

@@ -7,6 +7,12 @@ import "../slide-utils/global-styles.css";
 import "./video/video.scss";
 import templateConfig from "./video.json";
 
+// How long to wait for `loadedmetadata` before giving up on the video.
+const metadataGuardMs = 15000;
+
+// Flat margin added on top of the 10% duration overshoot guard.
+const bufferingGuardMarginMs = 5000;
+
 function id() {
   return templateConfig.id;
 }
@@ -69,12 +75,20 @@ function Video({ slide, content, run, slideDone, executionId }) {
 
     let guardTimeout = null;
 
+    // Covers a source that neither loads nor errors. Stays armed until a
+    // duration-based guard replaces it, so no path is left without a backstop.
+    let loadGuardTimeout = setTimeout(finish, metadataGuardMs);
+
     const onLoadedMetadata = () => {
-      if (Number.isFinite(video.duration) && video.duration > 0) {
-        // Allow 10% extra time for buffering delays.
-        const guardMs = video.duration * 1.1 * 1000;
-        guardTimeout = setTimeout(finish, guardMs);
-      }
+      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+
+      clearTimeout(loadGuardTimeout);
+      loadGuardTimeout = null;
+
+      // Allow 10% plus a flat margin for buffering delays — 10% alone is a
+      // very short window on a short clip.
+      const guardMs = video.duration * 1.1 * 1000 + bufferingGuardMarginMs;
+      guardTimeout = setTimeout(finish, guardMs);
     };
 
     video.addEventListener("ended", finish);
@@ -90,8 +104,10 @@ function Video({ slide, content, run, slideDone, executionId }) {
       promise
         .then(() => {})
         .catch(() => {
+          // Autoplay was rejected — expected whenever `sound` is on, since the
+          // video is then unmuted. Offer controls and let the guards above
+          // progress the slide rather than dropping it instantly.
           video.controls = true;
-          finish();
         });
     }
 
@@ -99,6 +115,9 @@ function Video({ slide, content, run, slideDone, executionId }) {
       video.removeEventListener("ended", finish);
       video.removeEventListener("error", finish);
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      if (loadGuardTimeout !== null) {
+        clearTimeout(loadGuardTimeout);
+      }
       if (guardTimeout !== null) {
         clearTimeout(guardTimeout);
       }

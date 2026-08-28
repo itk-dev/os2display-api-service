@@ -124,7 +124,7 @@ function RSS({ slide, content, run, slideDone, executionId }) {
           </FeedTitle>
           {slide?.feed?.configuration?.showFeedProgress && (
             <FeedProgress className="feed-info--progress">
-              {feedEntries.length > 0 && (
+              {entryIndex !== null && feedEntries.length > 0 && (
                 <span className="feed-info--progress-numbers">
                   {entryIndex + 1} / {feedEntries.length}
                 </span>

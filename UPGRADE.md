@@ -17,6 +17,7 @@
   - [Developer guide](#developer-guide)
     - [Repository changes](#repository-changes)
     - [Convert external templates to custom templates](#convert-external-templates-to-custom-templates)
+    - [`BaseSlideExecution` replaced by hooks](#baseslideexecution-replaced-by-hooks)
     - [Removed feed types](#removed-feed-types)
 
 ## 2.x -> 3.0
@@ -310,6 +311,42 @@ Checklist:
 - [ ] Template `id` identical to the 2.x external template.
 - [ ] `app:templates:list` shows the custom template as available/installed.
 - [ ] Existing slides using the template render in preview and on a screen.
+
+#### `BaseSlideExecution` replaced by hooks
+
+`assets/shared/slide-utils/base-slide-execution.js` is removed. Templates that imported it must
+switch to `useBaseSlideExecution`, which owns the timer and clears it on unmount:
+
+```jsx
+// Before
+import BaseSlideExecution from "../slide-utils/base-slide-execution.js";
+
+useEffect(() => {
+  if (!run) return;
+  const exec = new BaseSlideExecution(slide, slideDone);
+  exec.start();
+  return () => exec.stop();
+}, [run, slide, slideDone]);
+
+// After
+import useBaseSlideExecution from "../slide-utils/useBaseSlideExecution.js";
+
+useBaseSlideExecution({ slide, run, slideDone, duration });
+```
+
+`duration` is in milliseconds and defaults to 15000 when missing or non-positive — the same default
+the class applied.
+
+Templates that stepped through a list of entries themselves before calling `slideDone()` can hand
+that to `useMultipleEntrySlideExecution` (`{ entries, run, slide, slideDone, entryDuration }`), which
+returns `{ currentEntry, entryIndex }`. Both are `null` until the slide starts running, so guard on
+that rather than assuming index `0`.
+
+Checklist:
+
+- [ ] No custom template imports `base-slide-execution.js`.
+- [ ] Slides using converted templates advance on a screen (they lock the playlist if `slideDone()`
+      is never reached).
 
 #### Removed feed types
 

@@ -63,8 +63,7 @@ Every `adminForm` entry needs a unique `key:` (scoped to the template is fine) a
 ### `<name>.jsx` — the renderer + contract
 
 ```jsx
-import { useEffect } from "react";
-import BaseSlideExecution from "../slide-utils/base-slide-execution.js";
+import useBaseSlideExecution from "../slide-utils/useBaseSlideExecution.js";
 import "../slide-utils/global-styles.css";
 import myTemplateConfig from "./<name>.json";
 
@@ -89,24 +88,42 @@ function renderSlide(slide, run, slideDone) {
 }
 
 function MyTemplate({ slide, run, slideDone, content, executionId }) {
-  // BaseSlideExecution calls slideDone() after `content.duration` seconds.
-  // For anything more complex (video end, user interaction), invoke
-  // slideDone() yourself.
-  useEffect(() => {
-    if (!run) return;
-    const exec = new BaseSlideExecution(slide, slideDone);
-    exec.start();
-    return () => exec.stop();
-  }, [run, slide, slideDone]);
+  const { title, duration = 15000 } = content;
 
-  const { title } = content;
+  // Calls slideDone(slide) once `duration` ms have passed since `run` became
+  // truthy, and clears the timer on unmount. For anything more complex (video
+  // end, user interaction), invoke slideDone() yourself.
+  useBaseSlideExecution({ slide, run, slideDone, duration });
+
   return <div className="my-template">{title}</div>;
 }
 
 export default { id, config, renderSlide };
 ```
 
-**Critical: `slideDone()` must be called.** A template that never signals done locks the playlist on whichever screen it loads on. `BaseSlideExecution` is the standard way for fixed-duration slides; for video-driven or interactive slides, call `slideDone()` from the relevant event handler.
+**Critical: `slideDone()` must be called.** A template that never signals done locks the playlist on whichever screen it loads on. `useBaseSlideExecution` is the standard way for fixed-duration slides; for video-driven or interactive slides, call `slideDone()` from the relevant event handler.
+
+#### Templates that cycle through entries
+
+If the template steps through a list (feed entries, images) before signalling done, use
+`useMultipleEntrySlideExecution` instead — it owns the cycling and calls `slideDone()` after the last
+entry:
+
+```jsx
+const { currentEntry, entryIndex } = useMultipleEntrySlideExecution({
+  entries,
+  run,
+  slide,
+  slideDone,
+  entryDuration,
+});
+```
+
+`currentEntry` and `entryIndex` are both `null` until the slide starts running, so guard on that
+rather than assuming index `0` — anchoring your own timers or counters to mount instead of to `run`
+is the classic bug here. See `rss.jsx`, `slideshow.jsx`, `news-feed.jsx`, `instagram-feed.jsx` and
+`poster.jsx` for the five in-tree usages. The hook is a no-op on an empty `entries` array; templates
+add their own short fallback timer for that case.
 
 ### Optional: `<name>/<name>.scss`
 
@@ -147,7 +164,7 @@ The `slide-template-reviewer` subagent checks the contract — invoke it after c
 
 ## Common mistakes
 
-- **Forgetting `slideDone()`** — most common bug. Slide enters playlist, never advances. `BaseSlideExecution` solves the fixed-duration case.
+- **Forgetting `slideDone()`** — most common bug. Slide enters playlist, never advances. `useBaseSlideExecution` solves the fixed-duration case, `useMultipleEntrySlideExecution` the cycle-then-done case.
 - **Reusing a ULID** — silently overwrites the other template's registration. Always generate a fresh one.
 - **adminForm `name:` doesn't match what the renderer reads** — Admin writes to `slide.content.foo`, renderer reads `slide.content.bar`. Form changes appear to do nothing.
 - **Shipping only `.jsx` or only `.json`** — half-broken template. The Stop hook `claude-hook-check-template-pairs.sh` warns; the slide-template-reviewer flags as a blocker.
@@ -157,5 +174,6 @@ The `slide-template-reviewer` subagent checks the contract — invoke it after c
 
 - README "Custom Templates" — full reference for `adminForm` input types and the contribution path.
 - `assets/shared/custom-templates-example/` — a working example to copy from.
-- `assets/shared/slide-utils/base-slide-execution.js` — the slideDone helper.
+- `assets/shared/slide-utils/useBaseSlideExecution.js` — the fixed-duration slideDone helper.
+- `assets/shared/slide-utils/useMultipleEntrySlideExecution.js` — the cycle-through-entries helper.
 - Subagent `slide-template-reviewer` — contract checks.

@@ -178,9 +178,15 @@ All notable changes to this project will be documented in this file.
 - Introduced two hooks (useBaseSlideExecution, useMultipleEntrySlideExecution) that are used in the templates in place
   of BaseSlideExecution in fixed duration slides and manual iteration over entries in slides that iterate through
   elements before calling slideDone.
+- Removed the `BaseSlideExecution` class (`assets/shared/slide-utils/base-slide-execution.js`), superseded by the
+  hooks above. Breaking for out-of-tree custom templates — see `UPGRADE.md`.
+- Fixed the first entry's timing being anchored to mount rather than to run: `useMultipleEntrySlideExecution` now
+  reports `entryIndex` as `null` until the slide starts, and clears its state again when it stops.
 - Fixed issue with Slideshow animations that would be locked to one type.
 - Fixed sorting in calendar "multiple" layout.
-- Fixed video progression issues.
+- Fixed video progression issues. A rejected autoplay (which is what browsers do to a sound-enabled video) no longer
+  drops the slide instantly; the video shows controls and the duration guard progresses the playlist. The guard now
+  allows 10% plus five seconds for buffering stalls, and a separate guard covers a source whose metadata never loads.
 - Fixed video overflow.
 - Added vitest for frontend unit tests.
 - Added spinner when retrieving bind key.

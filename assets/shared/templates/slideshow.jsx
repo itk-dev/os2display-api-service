@@ -84,13 +84,18 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
     logoClasses.push(logoPosition);
   }
 
-  const { entryIndex: index } = useMultipleEntrySlideExecution({
+  const { entryIndex } = useMultipleEntrySlideExecution({
     entries: imageUrls,
     run,
     slide,
     slideDone,
     entryDuration: imageDurationInMilliseconds,
   });
+
+  // entryIndex is null until the slide starts running. Render the first image
+  // right away, but leave the fade and zoom clocks anchored to run.
+  const started = entryIndex !== null;
+  const index = entryIndex ?? 0;
 
   /**
    * A random function to simplify the code where random is used
@@ -213,7 +218,9 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
   };
 
   useEffect(() => {
-    setAnimationIndex(index);
+    if (!started) return;
+
+    setAnimationIndex(entryIndex);
     setFade(false);
 
     if (animation) {
@@ -221,16 +228,16 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
       preparedNextKeyframesRef.current = null;
       const keyframes =
         prepared ??
-        getCurrentAnimation(getAnimationName(index), animation) ??
+        getCurrentAnimation(getAnimationName(entryIndex), animation) ??
         "";
-      updateKeyframeSlot(index, keyframes);
+      updateKeyframeSlot(entryIndex, keyframes);
     }
 
     if (!fadeEnabled) return;
 
     const fadeTimer = setTimeout(
       () => {
-        const nextIndex = index + 1;
+        const nextIndex = entryIndex + 1;
         if (nextIndex < imageUrls.length) {
           setFade(true);
           setAnimationIndex(nextIndex);
@@ -247,7 +254,7 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
     );
 
     return () => clearTimeout(fadeTimer);
-  }, [index]);
+  }, [entryIndex]);
 
   return (
     <>
@@ -294,7 +301,13 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
                   style={getImageStyle(
                     imageUrl,
                     imageUrlIndex,
-                    animationIndex === imageUrlIndex || index === imageUrlIndex,
+                    // Only from run onwards: the animation timeline starts the
+                    // moment the property is applied, so applying it at mount
+                    // would leave the zoom part-way through once the keyframes
+                    // land.
+                    started &&
+                      (animationIndex === imageUrlIndex ||
+                        index === imageUrlIndex),
                     animationDuration,
                   )}
                   className={`image${mediaContain ? " media-contain" : ""}`}

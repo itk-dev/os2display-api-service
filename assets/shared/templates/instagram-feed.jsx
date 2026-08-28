@@ -51,7 +51,6 @@ function InstagramFeed({ slide, content, run, slideDone, executionId }) {
   dayjs.extend(relativeTime);
 
   const [translations] = useState(da);
-  const [currentPost, setCurrentPost] = useState(null);
 
   // Animation
   const [show, setShow] = useState(true);

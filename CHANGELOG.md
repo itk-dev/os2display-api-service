@@ -186,7 +186,9 @@ All notable changes to this project will be documented in this file.
 - Fixed sorting in calendar "multiple" layout.
 - Fixed video progression issues. A rejected autoplay (which is what browsers do to a sound-enabled video) no longer
   drops the slide instantly; the video shows controls and the duration guard progresses the playlist. The guard now
-  allows 10% plus five seconds for buffering stalls, and a separate guard covers a source whose metadata never loads.
+  allows 10% plus five seconds for buffering stalls, and a separate 30 second guard covers a source that never reports
+  a usable duration. The duration guard is installed from `durationchange` as well as `loadedmetadata`, so sources that
+  report an infinite duration at first (fragmented WebM, streams) are no longer cut short.
 - Fixed video overflow.
 - Added vitest for frontend unit tests.
 - Added spinner when retrieving bind key.

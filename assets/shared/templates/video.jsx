@@ -7,8 +7,8 @@ import "../slide-utils/global-styles.css";
 import "./video/video.scss";
 import templateConfig from "./video.json";
 
-// How long to wait for `loadedmetadata` before giving up on the video.
-const metadataGuardMs = 15000;
+// How long to wait for a usable duration before giving up on the video.
+const metadataGuardMs = 30000;
 
 // Flat margin added on top of the 10% duration overshoot guard.
 const bufferingGuardMarginMs = 5000;
@@ -79,7 +79,10 @@ function Video({ slide, content, run, slideDone, executionId }) {
     // duration-based guard replaces it, so no path is left without a backstop.
     let loadGuardTimeout = setTimeout(finish, metadataGuardMs);
 
-    const onLoadedMetadata = () => {
+    // Some sources (fragmented WebM, streams) report an infinite duration at
+    // loadedmetadata and only resolve it later, hence durationchange too.
+    const onDurationAvailable = () => {
+      if (guardTimeout !== null) return;
       if (!Number.isFinite(video.duration) || video.duration <= 0) return;
 
       clearTimeout(loadGuardTimeout);
@@ -93,7 +96,8 @@ function Video({ slide, content, run, slideDone, executionId }) {
 
     video.addEventListener("ended", finish);
     video.addEventListener("error", finish);
-    video.addEventListener("loadedmetadata", onLoadedMetadata);
+    video.addEventListener("loadedmetadata", onDurationAvailable);
+    video.addEventListener("durationchange", onDurationAvailable);
 
     video.load();
     video.muted = !sound;
@@ -114,7 +118,8 @@ function Video({ slide, content, run, slideDone, executionId }) {
     return () => {
       video.removeEventListener("ended", finish);
       video.removeEventListener("error", finish);
-      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("loadedmetadata", onDurationAvailable);
+      video.removeEventListener("durationchange", onDurationAvailable);
       if (loadGuardTimeout !== null) {
         clearTimeout(loadGuardTimeout);
       }

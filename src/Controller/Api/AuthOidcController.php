@@ -5,19 +5,19 @@ declare(strict_types=1);
 namespace App\Controller\Api;
 
 use App\Security\AzureOidcAuthenticator;
-use ItkDev\OpenIdConnect\Exception\ItkOpenIdConnectException;
+use ItkDev\OpenIdConnect\Exception\OpenIdConnectExceptionInterface;
 use ItkDev\OpenIdConnectBundle\Exception\InvalidProviderException;
 use ItkDev\OpenIdConnectBundle\Security\OpenIdConfigurationProviderManager;
 use Lexik\Bundle\JWTAuthenticationBundle\Security\Http\Authentication\AuthenticationFailureHandler;
 use Lexik\Bundle\JWTAuthenticationBundle\Security\Http\Authentication\AuthenticationSuccessHandler;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\HttpException;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
 
@@ -29,6 +29,7 @@ class AuthOidcController extends AbstractController
         private readonly AzureOidcAuthenticator $oidcAuthenticator,
         private readonly AuthenticationSuccessHandler $successHandler,
         private readonly AuthenticationFailureHandler $failureHandler,
+        private readonly LoggerInterface $authLogger,
     ) {}
 
     #[Route('/v2/authentication/oidc/token', name: 'authentication_oidc_token', methods: ['GET'])]
@@ -40,6 +41,8 @@ class AuthOidcController extends AbstractController
 
                 return $this->successHandler->handleAuthenticationSuccess($passport->getUser());
             } catch (CustomUserMessageAuthenticationException|InvalidProviderException $e) {
+                $this->authLogger->warning('OIDC token authentication failed', ['exception' => $e]);
+
                 $e = new AuthenticationException($e->getMessage());
 
                 return $this->failureHandler->onAuthenticationFailure($request, $e);
@@ -52,7 +55,7 @@ class AuthOidcController extends AbstractController
     }
 
     #[Route('/v2/authentication/oidc/urls', name: 'authentication_oidc_urls', methods: ['GET'])]
-    public function getUrls(Request $request, SessionInterface $session): Response
+    public function getUrls(Request $request): Response
     {
         $providerKey = $request->query->get('providerKey');
 
@@ -68,6 +71,7 @@ class AuthOidcController extends AbstractController
             $state = $provider->generateState();
 
             // Save to session
+            $session = $request->getSession();
             $session->set('oauth2provider', $providerKey);
             $session->set('oauth2state', $state);
             $session->set('oauth2nonce', $nonce);
@@ -75,7 +79,7 @@ class AuthOidcController extends AbstractController
             // We allow end session endpoint to not be set.
             try {
                 $endSessionUrl = $provider->getEndSessionUrl();
-            } catch (ItkOpenIdConnectException) {
+            } catch (OpenIdConnectExceptionInterface) { // @phpstan-ignore logging.silentCatch (the end-session endpoint is optional; its absence is an expected configuration, not a failure)
                 $endSessionUrl = null;
             }
 
@@ -92,7 +96,7 @@ class AuthOidcController extends AbstractController
             return new JsonResponse($data);
         } catch (InvalidProviderException) {
             throw $this->createNotFoundException('Unknown provider: '.$providerKey);
-        } catch (ItkOpenIdConnectException $e) {
+        } catch (OpenIdConnectExceptionInterface $e) {
             throw new HttpException(500, $e->getMessage());
         }
     }

@@ -3,29 +3,38 @@
 ## Table of Contents
 
 1. [Description](#description)
-2. [ADR - Architectural Decision Records](#adr---architectural-decision-records)
-3. [Technologies](#technologies)
+2. [Content Structure](#content-structure)
+3. [ADR - Architectural Decision Records](#adr---architectural-decision-records)
 4. [Versioning](#versioning)
-5. [Taskfile](#taskfile)
-6. [Development setup](#development-setup)
-7. [Production setup](#production-setup)
-8. [Coding standards](#coding-standards)
-9. [Stateless](#stateless)
-10. [OIDC providers](#oidc-providers)
-11. [JWT Auth](#jwt-auth)
-12. [Test](#test)
-13. [API specification and generated code](#api-specification-and-generated-code)
-14. [Configuration](#configuration)
-15. [Rest API & Relationships](#rest-api--relationships)
-16. [Error codes in the Client](#error-codes-in-the-client)
-17. [Preview mode in the Client](#preview-mode-in-the-client)
-18. [Feeds](#feeds)
-19. [Custom Templates](#custom-templates)
-20. [Static Analysis](#static-analysis)
-21. [Upgrade Guide](#upgrade-guide)
-22. [Tenants](#tenants)
-23. [Screen layouts](#screen-layouts)
-24. [Templates](#templates)
+5. [Technologies](#technologies)
+6. [Taskfile](#taskfile)
+7. [Prerequisites](#prerequisites)
+8. [Development setup](#development-setup)
+9. [Production setup](#production-setup)
+10. [Container images](#container-images)
+11. [Coding standards](#coding-standards)
+12. [Stateless](#stateless)
+13. [Authentication](#authentication)
+14. [Tenants](#tenants)
+15. [OIDC providers](#oidc-providers)
+16. [JWT Auth](#jwt-auth)
+17. [Test](#test)
+18. [API specification and generated code](#api-specification-and-generated-code)
+19. [Configuration](#configuration)
+20. [Rest API & Relationships](#rest-api--relationships)
+21. [Online check for Client](#online-check-for-client)
+22. [Error codes in the Client](#error-codes-in-the-client)
+23. [Preview mode in the Client](#preview-mode-in-the-client)
+24. [Screen status](#screen-status)
+25. [Feeds](#feeds)
+26. [Themes](#themes)
+27. [Templates](#templates)
+28. [Custom Templates](#custom-templates)
+29. [Screen Layouts](#screen-layouts)
+30. [Static analysis](#static-analysis)
+31. [Upgrade Guide](#upgrade-guide)
+32. [License](#license)
+33. [Contributing](#contributing)
 
 ## Description
 
@@ -57,10 +66,12 @@ Further documentation can be found in the
 | Theme     | A theme has css, that can override the slide css.                                                                                                                                                                                                                                                                                                                      | Admin         |
 | Template  | The template is how the slide looks, and which content is on the slide. Templates are accessible to choose on Slides.                                                                                                                                                                                                                                                  | Admin, editor |
 | Playlist  | A playlist arranges the order of the slides, and the playlist is scheduled.                                                                                                                                                                                                                                                                                            | Admin, editor |
+| Schedule  | A rrule-based schedule attached to a playlist, controlling when the playlist's slides are shown.                                                                                                                                                                                                                                                                       | Admin, editor |
 | Campaign  | A campaign is a playlist, that takes precedence over all other playlists on the screen. If there a multiple campaigns, they are queued. A campaign is either directly attached to a screen, or attached to a group affecting the screens that are members of that group. If a campaign applies to a screen it fills the whole screen, not just a region of the screen. | Admin         |
 | Group     | A group is a collection of screens.                                                                                                                                                                                                                                                                                                                                    | Admin         |
 | Layout    | A layout consists of different regions, and each region can have a number of playlists connected. A layout is connected to a screen.                                                                                                                                                                                                                                   | Admin         |
 | Screen    | A screen is connected to an actual screen, and has a layout with different playlists in.                                                                                                                                                                                                                                                                               | Admin         |
+| Tenant    | A content silo. Users, content and resources belong to a tenant; users may be members of several tenants.                                                                                                                                                                                                                                                              | Admin         |
 
 ```mermaid
 flowchart LR
@@ -96,10 +107,12 @@ For the versions available, see the
 
 ## Technologies
 
-The API is written in PHP project, built with [Symfony](https://symfony.com/) and
+The API is a PHP project, built with [Symfony](https://symfony.com/) and
 [API Platform](https://api-platform.com/).
 
 The Admin and Client are written in javascript and [React](https://react.dev/) and built with [Vite](https://vite.dev/).
+There are three Vite entry points (defined in `vite.config.js`): `admin`, `client` and `template`. Shared code lives
+in `assets/shared/`.
 
 ## Taskfile
 
@@ -114,6 +127,19 @@ For a list of commands, run:
 ```shell
 task --list-all
 ```
+
+## Prerequisites
+
+Local development relies on:
+
+- [Docker](https://www.docker.com/) and Docker Compose
+- [Task](https://taskfile.dev/) for running project commands
+- A reverse proxy mapping the local domain to the stack. The default domain is
+  `display.local.itkdev.dk` (configurable via `COMPOSE_DOMAIN` in `.env`); itk-dev's
+  setup is documented at [itk-dev/devops_itkdev-docker](https://github.com/itk-dev/devops_itkdev-docker).
+
+PHP 8.3+ and Node are only required if you build or run scripts directly on the host;
+otherwise the containers provide them.
 
 ## Development setup
 
@@ -144,24 +170,114 @@ The fixtures have an editor user: <editor@example.com> with the password: "apass
 
 The fixtures have the image-text template, and two screen layouts: "full screen" and "two boxes".
 
+### Reverse proxy & local HTTPS
+
+A fresh clone bundles its own traefik (compose profile `traefik`, enabled by default via
+`COMPOSE_PROFILES` in `.env`) that terminates TLS on `:80`/`:443` with a self-signed dev cert.
+`task site-install` runs `task dev:cert` for you on first install; re-run it manually with `FORCE=1`
+to regenerate (e.g. after changing `COMPOSE_DOMAIN`). The cert covers `COMPOSE_DOMAIN` plus
+the `node-` variant and `localhost`. Browsers warn the first time — accept the cert once.
+
+If 80/443 are taken on the host, override via `.env.local`:
+
+```text
+HTTP_PORT=8080
+HTTPS_PORT=8443
+```
+
+### Itkdev developers: host-level traefik opt-in
+
+Itkdev hosts already run a shared traefik on an external `frontend` network. Disable the bundled
+traefik and switch to the shared-frontend overlay in `.env.local`:
+
+```text
+COMPOSE_PROFILES=
+COMPOSE_FILE=docker-compose.yml:docker-compose.shared-frontend.yml
+COMPOSE_FRONTEND_NETWORK=frontend
+# Optional — restores the legacy wrapper:
+TASK_DOCKER_COMPOSE=itkdev-docker-compose
+```
+
+Switching modes is safe: the default network is `<project>_frontend`, scoped so it never collides
+with itkdev's shared `frontend` (override via `COMPOSE_FRONTEND_NETWORK`).
+
+See `docker-compose.shared-frontend.yml` for the pre-existing-network requirement.
+
+### Frontend dev server
+
+The Vite dev server runs automatically inside the `node` container — it is started by `docker compose up` (and
+therefore by `task compose-up` and `task site-install`) via the `command: npm run dev` entry in
+`docker-compose.yml`. There is no separate command to run.
+
+HMR is served from `node-display.local.itkdev.dk` over WSS on port 443 (host configurable via `COMPOSE_DOMAIN` in
+`.env`; see `vite.config.js`).
+
+When entities or API Platform configuration change, regenerate and apply the database schema:
+
+```shell
+task db:migrate
+```
+
+### Database (MariaDB)
+
+Local dev defaults to `mariadb:11.4` (LTS until May 2029). CI also exercises `mariadb:10.11` (LTS until
+Feb 2028) via a matrix in `phpunit.yaml` and `doctrine.yaml`. Two env vars control the version:
+
+- `MARIADB_IMAGE` — the docker image used by the `mariadb` compose service.
+- `MARIADB_VERSION` — the Doctrine `serverVersion` interpolated into `DATABASE_URL` in `.env` /
+  `.env.test`. Must match the running server, or Doctrine will emit dialect-incompatible SQL.
+
+To run the local stack against 10.11:
+
+```shell
+docker compose down -v
+MARIADB_IMAGE=mariadb:10.11 MARIADB_VERSION=10.11.13-MariaDB docker compose up -d
+```
+
 ## Production setup
 
-A JWT Auth keypair should be generated. See [JWT Auth](#jwt-auth).
-
-In `.env.local` set the following values:
+Required runtime configuration (set on the running container — see
+[Changing environment variables for the running images](#changing-environment-variables-for-the-running-images)):
 
 ```text
 APP_ENV=prod
 APP_SECRET=<GENERATE A NEW SECRET>
+DATABASE_URL=mysql://<user>:<pass>@<host>:3306/<db>?serverVersion=<version>
+JWT_PASSPHRASE=<passphrase used when generating the keypair>
 ```
 
-TODO: Add further production instructions: Build steps, release.json, etc.
+Generate a JWT Auth keypair (see [JWT Auth](#jwt-auth)) and persist `config/jwt/`
+across container rebuilds with a volume mount; the same `JWT_PASSPHRASE` must be
+set in the environment.
 
-Use the `app:update` command to migrate and update templates to latest version:
+On first boot — and after every deploy — run `app:update` to apply Doctrine
+migrations and install/refresh the bundled templates and screen layouts:
 
 ```shell
 docker compose exec phpfpm bin/console app:update --no-interaction
 ```
+
+## Container images
+
+Production deployments run two images:
+
+- `ghcr.io/os2display/display-api-service` — the php-fpm application
+- `ghcr.io/os2display/display-api-service-nginx` — the nginx reverse-proxy serving static files and forwarding
+  PHP requests
+
+Both are built and published from this repository. See [`infrastructure/Readme.md`](infrastructure/Readme.md)
+for the build pipeline (stages, tag scheme, local + CI flows).
+
+### Changing environment variables for the running images
+
+Set runtime configuration via your container runtime, not by editing the `.env` files baked into the image:
+
+- Docker Compose: `env_file:` or `environment:` on the `phpfpm` service.
+- Other orchestrators: equivalent native mechanism (`-e`, env injection, etc.).
+
+Real environment variables take precedence over the image's compiled `.env.local.php`, so values set this way
+override the committed `.env` baselines. Restart the container after changing them — Symfony reads its
+configuration once at boot.
 
 ## Coding standards
 
@@ -189,6 +305,9 @@ The API is stateless except for the `/v2/authentication` routes.
 Authentication is achieved through `/v2/authentication/token` for the `/admin`
 and through `/v2/authentication/screen` for the `/client`.
 
+See [JWT Auth](#jwt-auth) for token generation and usage, and [OIDC providers](#oidc-providers)
+for SSO-based admin authentication.
+
 ## Tenants
 
 Content is connected to a Tenant. A user is in x tenants.
@@ -206,8 +325,8 @@ A tenant can be configured with
 docker compose exec phpfpm bin/console app:tenant:configure
 ```
 
-At the monment, it is possible to configure the fallback image to be shown in the tenant when a screen shows no content.
-It is also possible to configure if a tenants should support interactive slides.
+At the moment, it is possible to configure the fallback image to be shown in the tenant when a screen shows no content.
+It is also possible to configure if a tenant should support interactive slides.
 
 ## OIDC providers
 
@@ -222,7 +341,7 @@ The external provider only handles authentication. A user logging in through the
 external provider will not be granted access automatically, but will be challenged
 to enter an activation (invite) code to verify access.
 
-See `docs/feed/openid-connect.md` for environment variables for OpenID Connect configuration.
+See `docs/configuration/openid-connect.md` for environment variables for OpenID Connect configuration.
 
 ### Internal
 
@@ -304,7 +423,25 @@ We use PHPUnit for API tests:
 task test:api
 ```
 
+### Unit tests - Vitest
+
+Use Vitest for unit and component tests (pure functions, utilities, components with jsdom).
+
+Test files are located in `assets/tests/` alongside the Playwright tests.
+
+Vitest picks up `*.test.js` files.
+
+Unit tests for client and admin utility functions use Vitest:
+
+```shell
+task test:unit
+```
+
 ### Frontend tests - Playwright
+
+Use Playwright for end-to-end tests that run against the full application in a real browser.
+
+Playwright picks up `*.spec.js` files.
 
 To test the React apps we use playwright.
 
@@ -312,13 +449,13 @@ To test the React apps we use playwright.
 
 It is important that the versions of the playwright container and the library imported in package.json align.
 
-See the `docker-compose.override.yml` playwright entry and the version imported in package.json.
+See the `docker-compose.yml` playwright entry and the version imported in package.json.
 
 #### Testing on the built files
 
-This project includes a test script that handles building assets, running
-Playwright tests, and stops and starts the node container. This script tests the
-*built* files. This is the approach the GitHub Action uses.
+Runs the Playwright end-to-end suite against a production build: it stops the
+`node` (Vite dev) container, builds the assets, runs the tests, then restarts
+`node` — the same flow the CI Playwright job uses.
 
 ```shell
 task test:frontend-built
@@ -327,7 +464,7 @@ task test:frontend-built
 or
 
 ```shell
-./scripts/test {TEST-PATH}
+./scripts/test-frontend-built.sh {TEST-PATH}
 ```
 
 TEST-PATH is optional, and is the specific test file or directory to run like
@@ -338,11 +475,13 @@ TEST-PATH is omitted, all tests will run.
 
 To run test from the local machine, there are a few options.
 
+Run Playwright headlessly on the host against the running stack:
+
 ```shell
 task test:frontend-local
 ```
 
-In interactive mode:
+Open the Playwright UI for interactive debugging:
 
 ```shell
 task test:frontend-local-ui
@@ -397,6 +536,7 @@ KEY_VAULT_SOURCE=ENVIRONMENT
 KEY_VAULT_JSON="{}"
 TRACK_SCREEN_INFO=false
 TRACK_SCREEN_INFO_UPDATE_INTERVAL_SECONDS=300
+MEDIA_MAX_UPLOAD_SIZE_MB=200
 ###< App ###
 ```
 
@@ -412,6 +552,59 @@ TRACK_SCREEN_INFO_UPDATE_INTERVAL_SECONDS=300
 - EVENTDATABASE_API_V2_CACHE_EXPIRE_SECONDS: What should the expire be for cache entries in EventDatabaseApiV2FeedType?
 - TRACK_SCREEN_INFO: Should screen info be tracked (true|false)?
 - TRACK_SCREEN_INFO_UPDATE_INTERVAL_SECONDS: How often (seconds) should the screen info be tracked from API requests?
+- MEDIA_MAX_UPLOAD_SIZE_MB: Maximum allowed size (in megabytes, binary MiB) for media uploads. Enforced inside
+  `App\Controller\Api\MediaController` and exposed to the Admin via `/config/admin` so the dropzone size check and
+  the displayed "Max-size" label stay aligned. Must also be aligned with the nginx body-size limit and the PHP-FPM
+  upload/post limits — see [Configuring media upload size limits](#configuring-media-upload-size-limits) below.
+
+  **Default**: `200`.
+
+  Changes are picked up on the next request once PHP-FPM workers see the new env value (in production, restart the
+  php-fpm container or reload the workers). The admin UI re-fetches `/config/admin` on the next page load.
+
+### Logging
+
+Structured JSON logging on per-domain channels (see [ADR 011](docs/adr/011-structured-logging.md) and
+[docs/logging.md](docs/logging.md)). Each domain channel has a production stream handler whose threshold is
+`LOG_LEVEL_<CHANNEL>`, falling back to the global `LOG_LEVEL` when the per-channel value is empty or unset.
+
+```dotenv
+###> Logging ###
+LOG_PATH=php://stderr
+LOG_LEVEL=info
+LOG_LEVEL_AUTH=
+LOG_LEVEL_SCREEN=
+LOG_LEVEL_MEDIA=
+LOG_LEVEL_FEED=
+LOG_LEVEL_INTERACTIVE=
+LOG_LEVEL_CACHE=
+LOG_LEVEL_OUTBOUND_HTTP=
+LOG_LEVEL_DATABASE=
+###< Logging ###
+```
+
+- LOG_PATH: Destination for the production log handlers. Defaults to `php://stderr`, which suits container
+  deployments (the runtime captures stderr). Bare-metal nginx + php-fpm deployments may point it at a file
+  (e.g. `%kernel.logs_dir%/prod.log`); the operator then owns log rotation and the php-fpm user's write permission
+  to the directory. Image/container deployments must keep `php://stderr`.
+
+  **Default**: `php://stderr`.
+- LOG_LEVEL: Global log level for the application domain channels (`debug`, `info`, `notice`, `warning`, `error`,
+  `critical`). `info` reproduces the previous output.
+
+  **Default**: `info`.
+- LOG_LEVEL_AUTH, LOG_LEVEL_SCREEN, LOG_LEVEL_MEDIA, LOG_LEVEL_FEED, LOG_LEVEL_INTERACTIVE, LOG_LEVEL_CACHE,
+  LOG_LEVEL_OUTBOUND_HTTP, LOG_LEVEL_DATABASE: Per-channel threshold overrides. Empty or unset inherits
+  `LOG_LEVEL`. Set one to raise or lower a single channel (e.g. `LOG_LEVEL_FEED=warning`) without affecting the
+  others. An invalid level fails fast at boot. (`LOG_LEVEL_CACHE` gates Symfony's built-in cache-adapter channel —
+  Redis backend failures — not an application channel.) Note `database` connection errors are logged at
+  `error`/`critical`, so they emit regardless of `LOG_LEVEL_DATABASE` (which only gates lower-severity
+  database-channel records).
+
+The `outbound_http` channel carries outbound HTTP client logs (`LoggingHttpClient`): completed requests at
+`info`, failures at `error` — controlled by `LOG_LEVEL_OUTBOUND_HTTP` like every other channel. Symfony's
+built-in `http_client` channel (native, request-only logging) is silenced with a `NullLogger`, so
+`LoggingHttpClient` is the single source.
 
 ### Admin configuration
 
@@ -425,6 +618,7 @@ ADMIN_SHOW_SCREEN_STATUS=false
 ADMIN_TOUCH_BUTTON_REGIONS=false
 ADMIN_LOGIN_METHODS='[{"type":"username-password","enabled":true,"provider":"username-password","label":""}]'
 ADMIN_ENHANCED_PREVIEW=false
+ADMIN_LOGIN_SCREEN_TEXT=''
 ###< Admin configuration ###
 ```
 
@@ -474,6 +668,16 @@ ADMIN_ENHANCED_PREVIEW=false
   See [Preview mode in the Client](#preview-mode-in-the-client).
 
   **Default**: Disabled.
+- ADMIN_LOGIN_SCREEN_TEXT: Optional explanatory text rendered in the sidebar card on the Admin login page.
+  Accepts a small allow-list of HTML tags (`strong`, `em`, `b`, `i`, `br`, `p`, `a`, `span`) and attributes
+  (`href`, `title`, `target`, `rel`, `class`); the value is sanitized client-side with DOMPurify before being
+  rendered. Leave empty to hide the sidebar card entirely.
+
+  ```dotenv
+  ADMIN_LOGIN_SCREEN_TEXT='<p>Er du <strong>medarbejder</strong> skal du benytte medarbejderlogin.</p><p>Er du <strong>borger</strong> skal du benytte MitID login.</p>'
+  ```
+
+  **Default**: Empty (no sidebar card shown).
 
 ### Client configuration
 
@@ -485,7 +689,7 @@ CLIENT_LOGIN_CHECK_TIMEOUT=20000
 CLIENT_REFRESH_TOKEN_TIMEOUT=300000
 CLIENT_RELEASE_TIMESTAMP_INTERVAL_TIMEOUT=600000
 CLIENT_SCHEDULING_INTERVAL=60000
-CLIENT_PULL_STRATEGY_INTERVAL=90000
+CLIENT_PULL_STRATEGY_INTERVAL=600000
 CLIENT_COLOR_SCHEME='{"type":"library","lat":56.0,"lng":10.0}'
 CLIENT_DEBUG=false
 ###< Client configuration ###
@@ -507,8 +711,9 @@ CLIENT_DEBUG=false
 
   **Default**: 60 s.
 - CLIENT_PULL_STRATEGY_INTERVAL: How often (milliseconds) should data be pulled from the API?
+  This also affects how often feed data is refreshed.
 
-  **Default**: 1 m. and 30 s.
+  **Default**: 10 m.
 - CLIENT_COLOR_SCHEME: Which colour scheme should be enabled? Should be a json object as string.
   This is used to signal how changes to darkmode are handled.
   Options are:
@@ -520,6 +725,21 @@ CLIENT_DEBUG=false
 - CLIENT_DEBUG: Should the Client be in debug mode (true|false). When not in debug mode the mouse pointer is hidden.
 
   **Default**: Disabled.
+
+### Configuring media upload size limits
+
+The maximum size of an uploaded media file is enforced at three independent layers. They must be kept aligned —
+the strictest one wins, and when nginx or PHP-FPM rejects a request the user sees a generic 413 / network error
+rather than the friendly Symfony validator message. Keep them ordered as: **PHP-FPM ≥ nginx ≥ app**.
+
+| Layer | Knob | Where it lives |
+|---|---|---|
+| App (Symfony validator + Admin UI) | `MEDIA_MAX_UPLOAD_SIZE_MB` (megabytes, integer) | `.env` (committed default `200`) — override in `.env.local` for development or in the deployment environment for production |
+| Nginx request body | `NGINX_MAX_BODY_SIZE` (nginx size string, e.g. `200m`) | `docker-compose.yml`; image default is `200m` (set in `infrastructure/nginx/Dockerfile`) |
+| PHP-FPM upload + post body | `PHP_UPLOAD_MAX_FILESIZE`, `PHP_POST_MAX_SIZE` (PHP size strings, e.g. `200M`) | Operator-managed env vars on the php-fpm container (supported by the `itkdev/php8.4-fpm` base image). Not set in this repo by default — base image defaults apply unless overridden |
+
+The app reads `MEDIA_MAX_UPLOAD_SIZE_MB` per-request, so a deploy / php-fpm worker reload is enough to pick up
+changes; no validator cache clear is needed.
 
 ### Other configuration options
 
@@ -536,6 +756,21 @@ EVENTDATABASE_API_V2_CACHE_EXPIRE_SECONDS=300
 
 - EVENTDATABASE_API_V2_CACHE_EXPIRE_SECONDS: What should the expiration be for cache entries in
   EventDatabaseApiV2FeedType?
+
+#### InstantBook
+
+```dotenv
+###> InstantBook ###
+INSTANT_BOOK_BUSY_INTERVALS_SOURCE=graph
+###< InstantBook ###
+```
+
+- INSTANT_BOOK_BUSY_INTERVALS_SOURCE: Where the InstantBook interactive slide fetches resource
+  busy-intervals from.
+  - `graph`: Fetch busy intervals from Microsoft Graph (results cached for 15 minutes).
+  - `feed`: Fetch busy intervals from the slide's configured calendar-output feed.
+
+  **Default**: `graph`.
 
 ## Rest API & Relationships
 
@@ -691,14 +926,14 @@ Furthermore, the section "Tilkobling" will show the following data:
 * Kodeudgivelsestidspunkt: 17/6 2024 17:26
 ```
 
-This shows when the latest communication has occured, what client version the machine is running,
+This shows when the latest communication has occurred, what client version the machine is running,
 and the time of client code release.
 
 ## Feeds
 
-"Feeds" in OS2display are external data sources that can provide up-to-data to slides. The idea is that if you can set
-up a slide based on a feed and publish it. The Screen Client will then fetch new data from the feed whenever the Slide
-is shown on screen.
+"Feeds" in OS2display are external data sources that can provide up-to-date data to slides. The idea is that you can
+set up a slide based on a feed and publish it; the Screen Client will then fetch new data from the feed whenever the
+slide is shown on screen.
 
 The simplest example is a classic RSS news feed. You can set up a slide based on the RSS slide template, configure the
 RSS source URL, and whenever the slide is on screen it will show the latest entries from the RSS feed.
@@ -722,17 +957,17 @@ For example:
   booking system you can implement a "FeedSource" that fetches booking data from your source and normalizes it to match
   the calendar output model.
 
-## Create a new FeedType
+### Create a new FeedType
 
 To implement a new FeedType, create a class that implements `src/Feed/FeedTypeInterface`.
 
-## List installed Feed Sources
+### List installed Feed Sources
 
 ```shell
 docker compose exec phpfpm bin/console app:feed:list-feed-source
 ```
 
-## Create a Feed Source
+### Create a Feed Source
 
 To create a feed source use the following command:
 
@@ -748,7 +983,7 @@ To override an existing feed source, use the ulid in the command above, eg.:
 docker compose exec phpfpm bin/console app:feed:create-feed-source 01FYRMSGGHG4VXS3Z0WACG6BX8
 ```
 
-## Remove a Feed Source
+### Remove a Feed Source
 
 ```shell
 docker compose exec phpfpm bin/console app:feed:remove-feed-source 01FYRMSGGHG4VXS3Z0WACG6BX8
@@ -935,23 +1170,34 @@ To make a layout region into a touch button region, add the following to the reg
 
 ## Static analysis
 
-[Psalm](https://psalm.dev/) is used for static analysis:
+[PHPStan](https://phpstan.org/) is used for static analysis:
 
 ```shell
 task code-analysis
 ```
 
-We use [a baseline file](https://psalm.dev/docs/running_psalm/dealing_with_code_issues/#using-a-baseline-file) for Psalm
-([`psalm-baseline.xml`](psalm-baseline.xml)).
+Configuration lives in [`phpstan.dist.neon`](phpstan.dist.neon). We use a
+[baseline file](https://phpstan.org/user-guide/baseline)
+([`phpstan-baseline.neon`](phpstan-baseline.neon)) to ignore pre-existing issues.
 
-Run this command to update the baseline file:
+Run this command to regenerate the baseline file:
 
 ```shell
-task psalm:update-baseline
+task phpstan:generate-baseline
 ```
 
-Psalm [error level](https://psalm.dev/docs/running_psalm/error_levels/) is set to level 2.
+PHPStan [rule level](https://phpstan.org/user-guide/rule-levels) is set to level 6.
 
 ## Upgrade Guide
 
 See [UPGRADE.md](UPGRADE.md) for upgrade guides.
+
+## License
+
+OS2Display is released under the [Mozilla Public License 2.0](LICENSE).
+
+## Contributing
+
+Bug reports and pull requests are tracked on
+[GitHub](https://github.com/os2display/display-api-service/issues). See
+[Coding standards](#coding-standards) for the checks a PR must pass.

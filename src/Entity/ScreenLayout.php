@@ -10,24 +10,26 @@ use App\Entity\Tenant\Screen;
 use App\Entity\Traits\EntityTitleDescriptionTrait;
 use App\Entity\Traits\MultiTenantTrait;
 use App\Entity\Traits\RelationsChecksumTrait;
+use App\EventListener\ScreenLayoutDoctrineEventListener;
 use App\Repository\ScreenLayoutRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ScreenLayoutRepository::class)]
-#[ORM\EntityListeners([\App\EventListener\ScreenLayoutDoctrineEventListener::class])]
-#[ORM\Index(fields: ['changed'], name: 'changed_idx')]
+#[ORM\EntityListeners([ScreenLayoutDoctrineEventListener::class])]
+#[ORM\Index(fields: ['changed'], name: 'screen_layout_changed_idx')]
 class ScreenLayout extends AbstractBaseEntity implements MultiTenantInterface, RelationsChecksumInterface
 {
     use MultiTenantTrait;
     use EntityTitleDescriptionTrait;
     use RelationsChecksumTrait;
 
-    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['default' => 0])]
+    #[ORM\Column(type: Types::INTEGER, nullable: false, options: ['default' => 0])]
     private int $gridRows = 0;
 
-    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['default' => 0])]
+    #[ORM\Column(type: Types::INTEGER, nullable: false, options: ['default' => 0])]
     private int $gridColumns = 0;
 
     /**
@@ -74,7 +76,7 @@ class ScreenLayout extends AbstractBaseEntity implements MultiTenantInterface, R
     }
 
     /**
-     * @return Collection
+     * @return Collection<int, Screen>
      */
     public function getScreens(): Collection
     {
@@ -118,7 +120,7 @@ class ScreenLayout extends AbstractBaseEntity implements MultiTenantInterface, R
     }
 
     /**
-     * @return Collection
+     * @return Collection<int, ScreenLayoutRegions>
      */
     public function getRegions(): Collection
     {

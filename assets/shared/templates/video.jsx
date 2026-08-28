@@ -107,7 +107,7 @@ function Video({ slide, content, run, slideDone, executionId }) {
 
   return (
     <>
-      <div className="template-video video-container">
+      <div className="template-video">
         <video
           width="100%"
           height="100%"

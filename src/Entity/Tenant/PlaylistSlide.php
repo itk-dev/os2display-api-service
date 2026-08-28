@@ -7,10 +7,11 @@ namespace App\Entity\Tenant;
 use App\Entity\Interfaces\RelationsChecksumInterface;
 use App\Entity\Traits\RelationsChecksumTrait;
 use App\Repository\PlaylistSlideRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PlaylistSlideRepository::class)]
-#[ORM\Index(fields: ['changed'], name: 'changed_idx')]
+#[ORM\Index(fields: ['changed'], name: 'playlist_slide_changed_idx')]
 class PlaylistSlide extends AbstractTenantScopedEntity implements RelationsChecksumInterface
 {
     use RelationsChecksumTrait;
@@ -23,7 +24,7 @@ class PlaylistSlide extends AbstractTenantScopedEntity implements RelationsCheck
     #[ORM\JoinColumn(nullable: false)]
     private Slide $slide;
 
-    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, options: ['default' => 0])]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $weight = 0;
 
     public function getPlaylist(): Playlist

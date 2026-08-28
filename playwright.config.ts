@@ -13,14 +13,18 @@ const BASE_URL = process.env.BASE_URL ?? 'http://nginx:8080';
  */
 export default defineConfig({
   testDir: './assets/tests',
+  testMatch: '**/*.spec.js',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* CI runs on a 4-vCPU GitHub-hosted runner (public repo); use 3 workers and
+   * leave one core for the browser/system. Tests mock every network call per
+   * page (see assets/tests/**\/test-helper.js), so they are isolated and safe
+   * to run in parallel. Locally, Playwright's default (50% of cores) applies. */
+  workers: process.env.CI ? 3 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   // Open never added to avoid the CI pipeline to get stuck in a html-reporter-mode.
   reporter: [['html', { open: 'never' }]],

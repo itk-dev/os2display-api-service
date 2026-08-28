@@ -39,7 +39,7 @@ export const renderScreen = (screen) => {
           <br />
           <div>
             {gridArea.map((area) => (
-              <div>{area}</div>
+              <div key={area}>{area}</div>
             ))}
           </div>
         </div>
@@ -49,7 +49,6 @@ export const renderScreen = (screen) => {
 };
 
 const slideDone = () => {
-  // eslint-disable-next-line no-console
   console.log("slide done");
 };
 
@@ -236,6 +235,7 @@ const CreateScreenTemplate = () => {
       <div style={gridTemplateAreas} className="grid-index">
         {regions.map(({ gridArea, title }) => (
           <div
+            key={title}
             className="grid-element"
             style={{ gridArea: createGridArea(gridArea) }}
           >
@@ -245,7 +245,7 @@ const CreateScreenTemplate = () => {
             <br />
             <div>
               {gridArea.map((area) => (
-                <div>{area}</div>
+                <div key={area}>{area}</div>
               ))}
             </div>
           </div>
@@ -292,7 +292,6 @@ const CreateScreenTemplate = () => {
       </div>
       {displayJSON && (
         <pre
-          // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(data, null, 2),
           }}

@@ -1,9 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  adminConfigJson,
-  screenGroupsListJson,
-  screensListJson,
-} from "./data-fixtures.js";
+import { screensListJson } from "./data-fixtures.js";
 import {
   beforeEachTest,
   fulfillDataRoute,

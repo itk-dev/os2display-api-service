@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { useDropzone } from "react-dropzone";
 import { useTranslation } from "react-i18next";
 
@@ -45,23 +46,21 @@ function FileDropzone({
   return (
     <>
       {/* TODO: Fix styling for dropzone: https://react-dropzone.js.org/#section-styling-dropzone */}
-      {/* eslint-disable react/jsx-props-no-spreading */}
       <div {...getRootProps({ className: "dropzone drag-drop-area" })}>
         <input {...getInputProps()} />
         <div>
           <span>{t("file-dropzone.drag-and-drop-text")}</span>
         </div>
       </div>
-      {/* eslint-enable react/jsx-props-no-spreading */}
       {fileRejections &&
-        fileRejections.map(({ errors }) => (
-          <>
+        fileRejections.map(({ file, errors }) => (
+          <Fragment key={file.name}>
             {errors.map((e) => (
               <div className="alert-danger p-2 mt-3 mb-3" key={e.code}>
                 {e.message}
               </div>
             ))}
-          </>
+          </Fragment>
         ))}
     </>
   );

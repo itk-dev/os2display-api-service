@@ -162,7 +162,6 @@ function SelectSlidesTable({ handleChange, name, slideId = "" }) {
     handleChange({ target });
   };
 
-  /* eslint-disable-next-line no-unused-vars */
   const columns = SelectSlideColumns({
     handleDelete: removeFromList,
     apiCall: useGetV2PlaylistsByIdQuery,

@@ -142,11 +142,8 @@ class PullStrategy {
       const promises = [];
       const regionData = cloneDeep(regions);
 
-      // @TODO: Fix eslint-raised issues.
-      // eslint-disable-next-line guard-for-in,no-restricted-syntax
       for (const regionKey in regionData) {
         const playlists = regionData[regionKey];
-        // eslint-disable-next-line guard-for-in,no-restricted-syntax
         for (const playlistKey in playlists) {
           promises.push(
             this.apiHelper.getAllResultsFromPath(
@@ -191,7 +188,7 @@ class PullStrategy {
     // Fetch screen
     try {
       screen = await this.apiHelper.getPath(screenPath);
-    } catch (err) {
+    } catch {
       logger.warn(
         `Screen (${screenPath}) not loaded. Aborting content update.`,
       );
@@ -305,7 +302,6 @@ class PullStrategy {
 
     // Iterate all slides and load required relations.
     const { regionData } = newScreen;
-    /* eslint-disable no-restricted-syntax,no-await-in-loop */
     for (const regionKey of Object.keys(regionData)) {
       const regionDataEntry = regionData[regionKey];
 
@@ -316,7 +312,7 @@ class PullStrategy {
         for (const slideKey of Object.keys(dataEntrySlidesData)) {
           const slide = cloneDeep(dataEntrySlidesData[slideKey]);
 
-          let previousSlide = null;
+          let previousSlide;
 
           // Find the slide in previous data for comparing relationsChecksum values.
           if (
@@ -412,7 +408,6 @@ class PullStrategy {
         }
       }
     }
-    /* eslint-enable no-restricted-syntax,no-await-in-loop */
 
     this.lastestScreenData = newScreen;
 

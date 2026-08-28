@@ -35,7 +35,6 @@ const AdminConfigLoader = {
         return configData;
       })
       .catch(() => {
-        // eslint-disable-next-line no-console
         console.error("Could not load config. Will use default config.");
         configData = DEFAULT_CONFIG;
         return configData;

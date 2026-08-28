@@ -6,13 +6,11 @@ import {
   loginTest,
 } from "./test-helper.js";
 import {
-  playlistListJson,
   onSaveJson,
   errorJson,
   screenGroupsListJson,
   screenGroupsSingleJson,
 } from "./data-fixtures.js";
-import { json } from "react-router-dom";
 
 test.describe("Create group page works", () => {
   test.beforeEach(async ({ page }) => {

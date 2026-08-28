@@ -12,7 +12,7 @@ import ScreenGroupsButton from "./screen-groups-button.jsx";
  * @param {boolean} props.displayStatus Should status be displayed?
  * @returns {object} The columns for the screens lists.
  */
-function getScreenColumns({ displayStatus }) {
+function useScreenColumns({ displayStatus }) {
   const { t } = useTranslation("common", { keyPrefix: "screen-list" });
 
   const columns = [
@@ -43,7 +43,7 @@ function getScreenColumns({ displayStatus }) {
   return columns;
 }
 
-const ScreenColumns = ColumnHoc(getScreenColumns);
-const SelectScreenColumns = SelectColumnHoc(getScreenColumns);
+const ScreenColumns = ColumnHoc(useScreenColumns);
+const SelectScreenColumns = SelectColumnHoc(useScreenColumns);
 
 export { SelectScreenColumns, ScreenColumns };

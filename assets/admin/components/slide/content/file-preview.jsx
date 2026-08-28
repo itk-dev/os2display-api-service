@@ -19,7 +19,6 @@ function FilePreview({ fileEntry, enableVideoControls = false }) {
   }, [fileEntry]);
 
   const renderPreview = (fileEntryToRender) => {
-    /* eslint-disable jsx-a11y/media-has-caption */
     if (fileEntryToRender?.assets) {
       const { assets, title } = fileEntryToRender;
 

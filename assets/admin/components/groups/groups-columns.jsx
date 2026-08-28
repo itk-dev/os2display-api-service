@@ -56,18 +56,13 @@ function ScreensButton({ group }) {
 /**
  * Columns for group lists.
  *
- * @param {object} props - The props.
- * @param {Function} props.apiCall - The api to call
- * @param {string} props.infoModalRedirect - The url for redirecting in the info modal.
- * @param {string} props.infoModalTitle - The info modal title.
  * @returns {object} The columns for the group lists.
  */
-function getGroupColumns({ apiCall, infoModalRedirect, infoModalTitle }) {
+function useGroupColumns() {
   const { t } = useTranslation("common", { keyPrefix: "groups-columns" });
 
   const columns = [
     {
-      // eslint-disable-next-line react/prop-types
       content: (group) => <ScreensButton group={group} />,
       key: "screens",
       label: t("screens"),
@@ -77,7 +72,7 @@ function getGroupColumns({ apiCall, infoModalRedirect, infoModalTitle }) {
   return columns;
 }
 
-const GroupColumns = ColumnHoc(getGroupColumns);
-const SelectGroupColumns = SelectColumnHoc(getGroupColumns);
+const GroupColumns = ColumnHoc(useGroupColumns);
+const SelectGroupColumns = SelectColumnHoc(useGroupColumns);
 
 export { SelectGroupColumns, GroupColumns };

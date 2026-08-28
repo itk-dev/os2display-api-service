@@ -41,7 +41,6 @@ function FormInput({
 }) {
   const { t } = useTranslation("common");
   const invalidInputText = invalidText || t("form-input.validation-text");
-  /* eslint-disable react/jsx-props-no-spreading */
   return (
     <FormGroup className={formGroupClasses}>
       {label && (
@@ -73,7 +72,6 @@ function FormInput({
       {helpText && <small>{helpText}</small>}
     </FormGroup>
   );
-  /* eslint-enable react/jsx-props-no-spreading */
 }
 
 export default FormInput;

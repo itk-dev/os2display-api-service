@@ -218,14 +218,9 @@ function Login() {
 
   useEffect(() => {
     let isMounted = true;
-    let code = null;
-    let state = null;
 
     if (search) {
-      const query = queryString.parse(search);
-
-      code = query.code;
-      state = query.state;
+      const { code, state } = queryString.parse(search);
 
       if (state && code) {
         const searchParams = new URLSearchParams({

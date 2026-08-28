@@ -69,7 +69,7 @@ class ApiHelper {
       }
 
       return response.json();
-    } catch (err) {
+    } catch {
       logger.error(`Failed to fetch: ${this.endpoint + path}`);
 
       return null;
@@ -98,7 +98,6 @@ class ApiHelper {
 
     try {
       while (nextPath !== null && pagesFetched < MAX_PAGES) {
-        // eslint-disable-next-line no-await-in-loop
         const responseData = await this.getPath(nextPath);
         pagesFetched += 1;
 

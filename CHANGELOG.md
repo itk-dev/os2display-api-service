@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Restored frontend linting, dropped in the 3.0 monorepo consolidation: ESLint 10 with an
+  `@eslint-react` flat config, run via `task coding-standards:eslint:check` and a new CI job.
+  `exhaustive-deps` is error-level in `assets/client` and `assets/shared` (outside the slide
+  templates) and warn elsewhere pending burn-down.
+
 ## [3.0.0-rc8] - 2026-08-24
 
 - Removed the `app:utils:convert-config-json-to-env` command, superseded by 2.8's

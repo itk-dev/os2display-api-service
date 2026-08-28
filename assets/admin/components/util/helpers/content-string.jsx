@@ -7,7 +7,7 @@
  */
 function contentString(content, andString) {
   const namesOfRows = content.map((row) => row.name || row.label);
-  let returnContentString = "";
+  let returnContentString;
   if (namesOfRows.length === 1) {
     returnContentString = `${namesOfRows.join(", ")}`;
   } else {

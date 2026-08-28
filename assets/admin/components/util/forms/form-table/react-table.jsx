@@ -23,11 +23,12 @@ function ReactTable({ data, columns, updateTableData }) {
         {
           id: "delete",
           accessor: () => "delete",
-          // eslint-disable-next-line react/prop-types
+          // `Cell` is react-table's column renderer API, not a nested
+          // component definition.
+          // eslint-disable-next-line @eslint-react/no-nested-component-definitions
           Cell: ({ row }) => (
             <Button
               variant="danger"
-              // eslint-disable-next-line react/prop-types
               onClick={() => updateTableData(data.splice(row.index, 1))}
             >
               {t("react-table.remove-row")}

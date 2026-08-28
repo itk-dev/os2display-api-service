@@ -131,7 +131,6 @@ class ContentService {
     } else {
       logger.info("Screen has not changed. Not emitting screen.");
 
-      // eslint-disable-next-line guard-for-in,no-restricted-syntax
       for (const regionKey in data.screen.regionData) {
         const region = this.currentScreen.regionData[regionKey];
         this.scheduleService.updateRegion(regionKey, region);
@@ -230,9 +229,7 @@ class ContentService {
         (playlistSlide) => playlistSlide.slide,
       );
 
-      // eslint-disable-next-line no-restricted-syntax
       for (const slide of playlist.slidesData) {
-        // eslint-disable-next-line no-await-in-loop
         await ContentService.attachReferencesToSlide(pullStrategy, slide);
       }
 
@@ -252,7 +249,6 @@ class ContentService {
 
       const slide = await pullStrategy.getPath(`/v2/slides/${id}`);
 
-      // eslint-disable-next-line no-await-in-loop
       await ContentService.attachReferencesToSlide(pullStrategy, slide);
 
       const screen = screenForSlidePreview(slide);
@@ -270,21 +266,17 @@ class ContentService {
   }
 
   static async attachReferencesToSlide(strategy, slide) {
-    /* eslint-disable no-param-reassign */
     slide.templateData = await strategy.getTemplateData(slide);
     slide.feedData = await strategy.getFeedData(slide);
 
     slide.mediaData = {};
-    // eslint-disable-next-line no-restricted-syntax
     for (const media of slide.media) {
-      // eslint-disable-next-line no-await-in-loop
       slide.mediaData[media] = await strategy.getMediaData(media);
     }
 
     if (typeof slide.theme === "string" || slide.theme instanceof String) {
       slide.theme = await strategy.getPath(slide.theme);
     }
-    /* eslint-enable no-param-reassign */
   }
 
   /**

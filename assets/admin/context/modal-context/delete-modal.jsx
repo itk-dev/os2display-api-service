@@ -66,7 +66,6 @@ function DeleteModal({ unSetModal, onAccept, selected, setSelected }) {
         acceptText={t("delete")}
       >
         <ul>
-          {/* eslint-disable-next-line react/prop-types */}
           {selected.map(({ title }) => (
             <li key={title}>{title}</li>
           ))}

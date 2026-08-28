@@ -6,13 +6,12 @@ import ColumnHoc from "../util/column-hoc";
  *
  * @returns {object} The columns for the themes lists.
  */
-function getThemesColumns() {
+function useThemesColumns() {
   const { t } = useTranslation("common", { keyPrefix: "themes-list" });
 
   const columns = [
     {
       key: "slides",
-      // eslint-disable-next-line react/prop-types
       content: ({ onNumberOfSlides }) => <>{onNumberOfSlides}</>,
       label: t("columns.number-of-slides"),
     },
@@ -21,4 +20,4 @@ function getThemesColumns() {
   return columns;
 }
 
-export default ColumnHoc(getThemesColumns);
+export default ColumnHoc(useThemesColumns);

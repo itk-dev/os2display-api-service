@@ -8,7 +8,7 @@ import ColumnHoc from "../util/column-hoc";
  *
  * @returns {object} The columns for the users lists.
  */
-function getUserColumns() {
+function useUserColumns() {
   const { t } = useTranslation("common", { keyPrefix: "users-list" });
 
   return [
@@ -46,7 +46,7 @@ function getUserColumns() {
   ];
 }
 
-const UserColumns = ColumnHoc(getUserColumns, true, true);
-const SelectUserColumns = SelectColumnHoc(getUserColumns, true);
+const UserColumns = ColumnHoc(useUserColumns, true, true);
+const SelectUserColumns = SelectColumnHoc(useUserColumns, true);
 
 export { SelectUserColumns, UserColumns };

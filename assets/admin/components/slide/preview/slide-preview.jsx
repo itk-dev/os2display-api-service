@@ -86,7 +86,6 @@ function SlidePreview({
   }, [showPreview]);
 
   useEffect(() => {
-    // eslint-disable-next-line no-undef
     const observer = new ResizeObserver((entries) => {
       if (adjustFontSize) {
         if (entries.length > 0) {

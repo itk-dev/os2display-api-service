@@ -139,7 +139,7 @@ function NewsFeed({ slide, content, run, slideDone, executionId }) {
     let imageUrl = fallbackImageUrl ?? null;
 
     if (post?.medias instanceof Array) {
-      const medias = [...post?.medias];
+      const medias = [...post.medias];
 
       if (medias?.length > 0) {
         const first = medias.pop();

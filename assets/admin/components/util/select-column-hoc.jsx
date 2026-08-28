@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { useContext } from "react";
 import { Button } from "react-bootstrap";
 import { useTranslation } from "react-i18next";

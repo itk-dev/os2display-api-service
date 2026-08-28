@@ -296,6 +296,17 @@ Apply automatic fixes:
 task coding-standards:apply
 ```
 
+### Frontend linting
+
+The frontend assets are linted with ESLint (`task coding-standards:eslint:check`, autofixes with
+`task coding-standards:eslint:apply`). Prettier remains the formatting authority — ESLint only reports
+correctness problems.
+
+`@eslint-react/exhaustive-deps` is error-level in `assets/client` and `assets/shared`, because the screen
+client is where stale closures surface as production bugs. It is warn-level in `assets/admin`,
+`assets/template` and the slide templates under `assets/shared/templates`, which are still being burned
+down.
+
 ## Stateless
 
 The API is stateless except for the `/v2/authentication` routes.

@@ -131,7 +131,6 @@ function FormTable({ name, onChange, formGroupClasses = "", value = [] }) {
       .filter((anyValue) => typeof anyValue !== "undefined")
       .shift();
     dataCopy.forEach((element) => {
-      /* eslint-disable no-param-reassign */
       delete element[removeAccessor];
     });
     setData(dataCopy);

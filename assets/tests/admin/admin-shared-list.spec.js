@@ -1,11 +1,6 @@
 import { test, expect } from "@playwright/test";
-import {
-  beforeEachTest,
-  fulfillDataRoute,
-  fulfillEmptyRoutes,
-  loginTest,
-} from "./test-helper.js";
-import { playlistListJson, screensListJson } from "./data-fixtures.js";
+import { beforeEachTest, fulfillDataRoute, loginTest } from "./test-helper.js";
+import { playlistListJson } from "./data-fixtures.js";
 
 test.describe("Shared list tests", () => {
   test.beforeEach(async ({ page }) => {

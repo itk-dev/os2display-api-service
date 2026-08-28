@@ -157,6 +157,9 @@ function ImageText({ slide, content, run, slideDone, executionId }) {
       if (imageUrls?.length > 0) {
         const newImages = imageUrls.map((url) => ({
           url,
+          // One ref per image for react-transition-group's nodeRef; useRef
+          // cannot be called from inside a map callback.
+          // eslint-disable-next-line @eslint-react/no-create-ref
           nodeRef: createRef(),
         }));
 

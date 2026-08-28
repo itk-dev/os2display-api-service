@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { Spinner } from "react-bootstrap";
 
 /**
@@ -13,7 +12,6 @@ function ListLoading(Component) {
     loadingMessage,
     ...props
   }) {
-    // eslint-disable-next-line react/jsx-props-no-spreading
     if (!isLoading) return <Component {...props} />;
     return (
       <div className="d-flex m-5 justify-content-center">

@@ -6,7 +6,7 @@ import Publishing from "../util/publishing";
  *
  * @returns {object} The shared playlist columns
  */
-function getSharedPlaylistColumns() {
+function useSharedPlaylistColumns() {
   const { t } = useTranslation("common", {
     keyPrefix: "shared-playlists-columns",
   });
@@ -23,7 +23,6 @@ function getSharedPlaylistColumns() {
     {
       path: "published",
       label: t("published"),
-      // eslint-disable-next-line react/prop-types
       content: ({ published }) => <Publishing published={published} />,
     },
   ];
@@ -31,4 +30,4 @@ function getSharedPlaylistColumns() {
   return columns;
 }
 
-export default getSharedPlaylistColumns;
+export default useSharedPlaylistColumns;

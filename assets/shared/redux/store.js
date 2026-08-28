@@ -1,7 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { api } from "./generated-api.ts";
 
-/* eslint-disable-next-line import/prefer-default-export */
 export const store = configureStore({
   reducer: {
     [api.reducerPath]: api.reducer,

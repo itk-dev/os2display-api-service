@@ -42,7 +42,6 @@ const ClientConfigLoader = {
             if (configData !== null) {
               resolve(configData);
             } else {
-              // eslint-disable-next-line no-console
               console.error("Could not load config. Will use default config.");
 
               // Default config.

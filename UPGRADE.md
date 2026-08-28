@@ -319,14 +319,18 @@ switch to `useBaseSlideExecution`, which owns the timer and clears it on unmount
 
 ```jsx
 // Before
-import BaseSlideExecution from "../slide-utils/base-slide-execution.js";
+import BaseSlideExecution from "../slide-utils/base-slide-execution";
 
+const slideExecution = new BaseSlideExecution(slide, slideDone);
 useEffect(() => {
-  if (!run) return;
-  const exec = new BaseSlideExecution(slide, slideDone);
-  exec.start();
-  return () => exec.stop();
-}, [run, slide, slideDone]);
+  if (run) {
+    slideExecution.start(duration);
+  }
+
+  return function cleanup() {
+    slideExecution.stop();
+  };
+}, [run]);
 
 // After
 import useBaseSlideExecution from "../slide-utils/useBaseSlideExecution.js";
@@ -334,8 +338,17 @@ import useBaseSlideExecution from "../slide-utils/useBaseSlideExecution.js";
 useBaseSlideExecution({ slide, run, slideDone, duration });
 ```
 
-`duration` is in milliseconds and defaults to 15000 when missing or non-positive — the same default
-the class applied.
+Note that the "before" shape constructs the instance **during render**, so every render produced a
+fresh object whose `slideTimeout` was already `null` — the cleanup then called `stop()` on that new
+instance rather than the one holding the live timer, and the timer was never actually cleared. The
+hook keeps its timer in a ref, so cleanup cancels the right one. Templates that copied this pattern
+get the fix for free.
+
+`duration` is in milliseconds. The hook falls back to 15000 when it is missing or non-positive; the
+class had no fallback and passed the value straight to `setTimeout`, so a missing duration became
+`setTimeout(fn, undefined)` and advanced the slide immediately. The fallback is new behaviour, not
+parity — a template that relied on a missing `duration` skipping the slide will now hold for 15
+seconds.
 
 Templates that stepped through a list of entries themselves before calling `slideDone()` can hand
 that to `useMultipleEntrySlideExecution` (`{ entries, run, slide, slideDone, entryDuration }`), which

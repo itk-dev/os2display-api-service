@@ -81,6 +81,12 @@ function Video({ slide, content, run, slideDone, executionId }) {
 
     // Some sources (fragmented WebM, streams) report an infinite duration at
     // loadedmetadata and only resolve it later, hence durationchange too.
+    //
+    // The guard is installed once, from the first usable duration. A source
+    // whose duration keeps growing is therefore cut at that first value —
+    // accepted deliberately, since re-arming would move the deadline along
+    // with the stream and the guard would never fire, which is the playlist
+    // lock it exists to prevent.
     const onDurationAvailable = () => {
       if (guardTimeout !== null) return;
       if (!Number.isFinite(video.duration) || video.duration <= 0) return;

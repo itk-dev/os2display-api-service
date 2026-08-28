@@ -199,6 +199,11 @@ tasks:
     cmds:
       - task composer -- code-analysis
 
+  code-analysis:assets:
+    desc: "Runs type checking on frontend assets (checkJs strict ratchet)."
+    cmds:
+      - task compose -- run --rm node npm run typecheck
+
   phpstan:generate-baseline:
     desc: "Generates the PHPStan baseline file."
     cmds:
@@ -219,6 +224,7 @@ tasks:
     cmds:
       - task coding-standards:check
       - task code-analysis
+      - task code-analysis:assets
       - task rector:check
       - task test:api
       - task test:frontend-local

@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "noImplicitAny": true,
+    "strict": false,
+    "jsx": "react-jsx",
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "types": ["vite/client", "vite-plugin-svgr/client"]
+  },
+  "include": [
+    "assets/**/*.js",
+    "assets/**/*.jsx",
+    "assets/**/*.ts",
+    "assets/**/*.tsx"
+  ]
+}

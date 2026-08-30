@@ -22,6 +22,7 @@ vi.mock("../../client/service/schedule-service", () => {
   const MockScheduleService = vi.fn(function () {
     this.updateRegion = vi.fn();
     this.regionRemoved = vi.fn();
+    this.stopAll = vi.fn();
   });
   return { default: MockScheduleService };
 });
@@ -111,6 +112,15 @@ describe("ContentService", () => {
 
       expect(callbacks.current.onRegionReady).not.toBe(service.regionReady);
       expect(callbacks.current.onRegionRemoved).not.toBe(service.regionRemoved);
+    });
+
+    it("tears down scheduling before detaching the region callbacks", () => {
+      // Once onRegionRemoved is a no-op the Region unmounts have nowhere to
+      // land, so the intervals must already be gone by then.
+      service.start();
+      service.stop();
+
+      expect(service.scheduleService.stopAll).toHaveBeenCalledTimes(1);
     });
 
     it("stop is a no-op if not started", () => {

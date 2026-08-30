@@ -174,6 +174,11 @@ class ContentService {
 
     logger.info("Content service stopped.");
 
+    // Must happen before the callbacks are detached: once onRegionRemoved is a
+    // no-op, the Region unmounts that would otherwise clear these intervals
+    // have nowhere to land.
+    this.scheduleService.stopAll();
+
     this.callbacks.current.onRegionReady = () => {};
     this.callbacks.current.onRegionRemoved = () => {};
   }

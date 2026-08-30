@@ -20,6 +20,8 @@ class ScheduleService {
 
   contentEmpty = true;
 
+  stopped = false;
+
   /**
    * @param {object} callbacks - Ref object with setIsContentEmpty and updateRegionSlides.
    */
@@ -28,6 +30,30 @@ class ScheduleService {
     this.updateRegion = this.updateRegion.bind(this);
     this.checkForEmptyContent = this.checkForEmptyContent.bind(this);
     this.sendSlides = this.sendSlides.bind(this);
+    this.stopAll = this.stopAll.bind(this);
+  }
+
+  /**
+   * Stop scheduling for every region.
+   *
+   * regionRemoved() only ever clears one region at a time, and it is driven by
+   * Region unmounts. ContentService.stop() replaces onRegionRemoved with a
+   * no-op before the screen is cleared, so those unmounts arrive nowhere and the
+   * abandoned service keeps one interval per region alive, pushing slides into a
+   * React tree that has moved on. On the reauth path that happens once per
+   * failed refresh, so the intervals accumulate for as long as the device runs.
+   */
+  stopAll() {
+    logger.info("Stopping all scheduling intervals.");
+
+    this.stopped = true;
+
+    Object.values(this.intervals).forEach((interval) => {
+      clearInterval(interval);
+    });
+
+    this.intervals = {};
+    this.regions = {};
   }
 
   checkForEmptyContent() {
@@ -71,6 +97,12 @@ class ScheduleService {
   updateRegion(regionId, region) {
     logger.info(`ScheduleService: updateRegion(${regionId})`);
 
+    // A pull already in flight when the service was torn down still lands here.
+    if (this.stopped) {
+      logger.info("ScheduleService: stopped, ignoring region update.");
+      return;
+    }
+
     if (!region || !regionId) {
       logger.info(`ScheduleService: regionId and/or region not set.`);
       return;
@@ -97,8 +129,13 @@ class ScheduleService {
         const schedulingInterval =
           config?.schedulingInterval ?? defaults.schedulingIntervalDefault;
 
-        // Extra check because of async — region may have been removed.
+        // Extra checks because of async — the region may have been removed, or
+        // the whole service torn down, while the config was loading. `intervals`
+        // is the map captured before the await; stopAll() swaps in a fresh one,
+        // so testing this.stopped is what keeps a late registration from landing
+        // on the live map.
         if (
+          !this.stopped &&
           !Object.prototype.hasOwnProperty.call(intervals, regionId) &&
           Object.prototype.hasOwnProperty.call(this.regions, regionId)
         ) {

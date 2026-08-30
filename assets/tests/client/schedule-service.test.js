@@ -231,4 +231,74 @@ describe("ScheduleService", () => {
       expect(service.regions.region1).toBeUndefined();
     });
   });
+
+  // regionRemoved() is driven by Region unmounts, and ContentService.stop()
+  // detaches that callback before the screen clears. Without stopAll() the
+  // abandoned service keeps one interval per region running and keeps calling
+  // the still-live React setters — on the reauth path, once per failed refresh.
+  describe("stopAll", () => {
+    let service;
+    let callbacks;
+
+    beforeEach(() => {
+      callbacks = makeCallbacks();
+      service = new ScheduleService(callbacks);
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("clears every registered interval, not just one region", () => {
+      const clearIntervalSpy = vi.spyOn(globalThis, "clearInterval");
+      service.intervals.region1 = setInterval(() => {}, 1000);
+      service.intervals.region2 = setInterval(() => {}, 1000);
+      service.regions.region1 = { hash: "a", slides: [] };
+      service.regions.region2 = { hash: "b", slides: [] };
+
+      service.stopAll();
+
+      expect(clearIntervalSpy).toHaveBeenCalledTimes(2);
+      expect(service.intervals).toEqual({});
+      expect(service.regions).toEqual({});
+    });
+
+    it("stops a running interval from reaching the callbacks", async () => {
+      await service.updateRegion("region1", []);
+      // Let the loadConfig promise settle so the interval is registered.
+      await vi.advanceTimersByTimeAsync(0);
+      expect(Object.keys(service.intervals)).toEqual(["region1"]);
+
+      service.stopAll();
+      callbacks.current.updateRegionSlides.mockClear();
+
+      await vi.advanceTimersByTimeAsync(180000);
+
+      expect(callbacks.current.updateRegionSlides).not.toHaveBeenCalled();
+    });
+
+    it("ignores a region update that lands after teardown", async () => {
+      service.stopAll();
+      callbacks.current.updateRegionSlides.mockClear();
+
+      await service.updateRegion("region1", []);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(service.regions.region1).toBeUndefined();
+      expect(service.intervals).toEqual({});
+      expect(callbacks.current.updateRegionSlides).not.toHaveBeenCalled();
+    });
+
+    it("does not register an interval when torn down mid config load", async () => {
+      // updateRegion registers its interval inside loadConfig().then(), so a
+      // teardown between the call and the resolve must not install one.
+      service.updateRegion("region1", []);
+      service.stopAll();
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(service.intervals).toEqual({});
+    });
+  });
 });

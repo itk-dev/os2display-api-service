@@ -319,6 +319,7 @@ class PullStrategy {
     if (abandoned()) return;
 
     const relationChecksumEnabled = config.relationsChecksumEnabled;
+    const feedMaxAge = config?.feedMaxAge ?? defaults.feedMaxAgeDefault;
 
     const newScreen = cloneDeep(screen);
 
@@ -368,6 +369,7 @@ class PullStrategy {
     const nextSlideChecksums = await this.enrichSlides(
       newScreen.regionData,
       relationChecksumEnabled,
+      feedMaxAge,
     );
 
     // Last gate before the writes below. Nothing awaits between here and
@@ -506,9 +508,10 @@ class PullStrategy {
    *
    * @param {object} regionData Regions containing playlists with slides.
    * @param {boolean} relationChecksumEnabled Whether checksum comparison is enabled.
+   * @param {number} feedMaxAge Max age in ms of cached feed data.
    * @returns {Promise<object>} Updated slide checksums.
    */
-  async enrichSlides(regionData, relationChecksumEnabled) {
+  async enrichSlides(regionData, relationChecksumEnabled, feedMaxAge) {
     const nextSlideChecksums = {};
     const promises = [];
 
@@ -523,10 +526,13 @@ class PullStrategy {
           const slide = cloneDeep(dataEntrySlidesData[slideKey]);
 
           promises.push(
-            this.enrichSlide(slide, relationChecksumEnabled).then(() => {
-              nextSlideChecksums[slide["@id"]] = slide.relationsChecksum ?? {};
-              dataEntrySlidesData[slideKey] = slide;
-            }),
+            this.enrichSlide(slide, relationChecksumEnabled, feedMaxAge).then(
+              () => {
+                nextSlideChecksums[slide["@id"]] =
+                  slide.relationsChecksum ?? {};
+                dataEntrySlidesData[slideKey] = slide;
+              },
+            ),
           );
         }
       }
@@ -547,8 +553,9 @@ class PullStrategy {
    *
    * @param {object} slide The slide object to mutate.
    * @param {boolean} relationChecksumEnabled Whether checksum comparison is enabled.
+   * @param {number} feedMaxAge Max age in ms of cached feed data.
    */
-  async enrichSlide(slide, relationChecksumEnabled) {
+  async enrichSlide(slide, relationChecksumEnabled, feedMaxAge) {
     const slideId = slide["@id"];
     const newSlideChecksums = slide.relationsChecksum ?? {};
     const oldSlideChecksums = this.previousSlideChecksums[slideId] ?? null;
@@ -653,9 +660,18 @@ class PullStrategy {
             id: feedId,
           },
           true,
+          feedMaxAge,
         );
       } catch (err) {
+        // Drop the slide rather than render it with no feed data. A template
+        // given an empty data set is indistinguishable from a genuine empty
+        // result, whereas an invalid slide is filtered out in region.jsx — and
+        // if that empties the region, the tenant fallback image is shown.
+        logger.warn(
+          `Feed data for slide (${slide["@id"]}) unavailable or too old. Marking slide as invalid.`,
+        );
         slide.feedData = null;
+        slide.invalid = true;
       }
     } else {
       slide.feedData = [];

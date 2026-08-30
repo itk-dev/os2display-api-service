@@ -6,12 +6,23 @@ import defaults from "../util/defaults.js";
 /**
  * Dispatch an RTK Query endpoint and return the unwrapped result.
  *
+ * On failure the RTK Query cache is used as a fallback, which is what keeps a
+ * screen rendering through a network outage. `maxAge` bounds how stale that
+ * fallback may be, for resources where old data is worse than no data.
+ *
  * @param {string} endpoint The endpoint name.
  * @param {object} args The endpoint args.
  * @param {boolean} forceRefetch Whether to bypass RTK Query cache.
+ * @param {number} [maxAge] Max age in ms of cached data served after a failed
+ *   fetch. Undefined means any cached data is acceptable.
  * @returns {Promise<any>} The result data.
  */
-export function query(endpoint, args, forceRefetch = false) {
+export function query(
+  endpoint,
+  args,
+  forceRefetch = false,
+  maxAge = undefined,
+) {
   const request = clientStore.dispatch(
     clientApi.endpoints[endpoint].initiate(args, { forceRefetch }),
   );
@@ -30,6 +41,21 @@ export function query(endpoint, args, forceRefetch = false) {
         clientStore.getState(),
       );
       if (cached?.data) {
+        if (maxAge !== undefined) {
+          // fulfilledTimeStamp is the last *successful* fetch. A failed refetch
+          // sets only status and error, so it survives any number of them.
+          const age = Date.now() - cached.fulfilledTimeStamp;
+
+          // A missing timestamp cannot be shown to be fresh, so treat it as old.
+          if (!(cached.fulfilledTimeStamp >= 0) || age > maxAge) {
+            logger.warn(
+              `Cached data for ${endpoint} is too old (age: ${age}ms, max: ${maxAge}ms). Not using it.`,
+            );
+
+            throw err;
+          }
+        }
+
         logger.warn(`Using cached data for ${endpoint} after fetch failure.`);
         return cached.data;
       }

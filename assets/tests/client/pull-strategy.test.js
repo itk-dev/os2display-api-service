@@ -449,7 +449,7 @@ describe("PullStrategy.getScreen", () => {
       expect(slide.feedData).toEqual(feedData);
     });
 
-    it("sets feedData to null when feed fetch fails", async () => {
+    it("marks the slide invalid when feed fetch fails with no cache", async () => {
       const slideWithFeed = makeSlide(SLIDE_ID, {
         feed: { feedUrl: `/v2/feeds/${FEED_ID}` },
       });
@@ -464,6 +464,122 @@ describe("PullStrategy.getScreen", () => {
       const slide =
         contentCapture.screen.regionData[REGION_ID][0].slidesData[0];
       expect(slide.feedData).toBeNull();
+      expect(slide.invalid).toBe(true);
+    });
+
+    it("does not mark a slide invalid when its feed resolves", async () => {
+      const slideWithFeed = makeSlide(SLIDE_ID, {
+        feed: { feedUrl: `/v2/feeds/${FEED_ID}` },
+      });
+      const feedData = { data: [{ title: "Feed item" }] };
+
+      setupBasicResponses({
+        getV2PlaylistsByIdSlides: hydra([{ slide: slideWithFeed }]),
+        getV2FeedsByIdData: feedData,
+      });
+
+      await strategy.getScreen(SCREEN_PATH);
+
+      const slide =
+        contentCapture.screen.regionData[REGION_ID][0].slidesData[0];
+      expect(slide.feedData).toEqual(feedData);
+      expect(slide.invalid).toBeUndefined();
+    });
+
+    it("leaves a slide without a feed alone", async () => {
+      setupBasicResponses();
+
+      await strategy.getScreen(SCREEN_PATH);
+
+      const slide =
+        contentCapture.screen.regionData[REGION_ID][0].slidesData[0];
+      expect(slide.feedData).toEqual([]);
+      expect(slide.invalid).toBeUndefined();
+    });
+
+    // A screen must ride out a short outage on cached feed data, but stale feed
+    // content looks current on a wall display, so past feedMaxAge the slide is
+    // dropped instead.
+    describe("feed staleness", () => {
+      const cachedFeed = { data: [{ title: "Cached feed item" }] };
+
+      /**
+       * Serve the feed endpoint from cache at a given age.
+       *
+       * @param {number} ageMs How long ago the cache entry was fulfilled.
+       */
+      function feedCachedAt(ageMs) {
+        endpoints.getV2FeedsByIdData.select = () => () => ({
+          data: cachedFeed,
+          fulfilledTimeStamp: Date.now() - ageMs,
+        });
+      }
+
+      afterEach(() => {
+        endpoints.getV2FeedsByIdData.select = () => () => undefined;
+      });
+
+      it("serves cached feed data during a short outage", async () => {
+        const slideWithFeed = makeSlide(SLIDE_ID, {
+          feed: { feedUrl: `/v2/feeds/${FEED_ID}` },
+        });
+
+        setupBasicResponses({
+          getV2FeedsByIdData: () => Promise.reject(new Error("Feed error")),
+          getV2PlaylistsByIdSlides: hydra([{ slide: slideWithFeed }]),
+        });
+        feedCachedAt(60 * 60 * 1000); // 1 hour, well inside the 24h default.
+
+        await strategy.getScreen(SCREEN_PATH);
+
+        const slide =
+          contentCapture.screen.regionData[REGION_ID][0].slidesData[0];
+        expect(slide.feedData).toEqual(cachedFeed);
+        expect(slide.invalid).toBeUndefined();
+      });
+
+      it("drops the slide once cached feed data passes feedMaxAge", async () => {
+        const slideWithFeed = makeSlide(SLIDE_ID, {
+          feed: { feedUrl: `/v2/feeds/${FEED_ID}` },
+        });
+
+        setupBasicResponses({
+          getV2FeedsByIdData: () => Promise.reject(new Error("Feed error")),
+          getV2PlaylistsByIdSlides: hydra([{ slide: slideWithFeed }]),
+        });
+        feedCachedAt(48 * 60 * 60 * 1000); // 2 days, past the 24h default.
+
+        await strategy.getScreen(SCREEN_PATH);
+
+        const slide =
+          contentCapture.screen.regionData[REGION_ID][0].slidesData[0];
+        expect(slide.feedData).toBeNull();
+        expect(slide.invalid).toBe(true);
+      });
+
+      it("honours feedMaxAge from client config over the default", async () => {
+        const slideWithFeed = makeSlide(SLIDE_ID, {
+          feed: { feedUrl: `/v2/feeds/${FEED_ID}` },
+        });
+
+        ClientConfigLoader.loadConfig.mockResolvedValue({
+          relationsChecksumEnabled: false,
+          feedMaxAge: 30 * 60 * 1000, // 30 minutes.
+        });
+
+        setupBasicResponses({
+          getV2FeedsByIdData: () => Promise.reject(new Error("Feed error")),
+          getV2PlaylistsByIdSlides: hydra([{ slide: slideWithFeed }]),
+        });
+        // Inside the 24h default, but outside the configured 30 minutes.
+        feedCachedAt(60 * 60 * 1000);
+
+        await strategy.getScreen(SCREEN_PATH);
+
+        const slide =
+          contentCapture.screen.regionData[REGION_ID][0].slidesData[0];
+        expect(slide.invalid).toBe(true);
+      });
     });
   });
 

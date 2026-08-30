@@ -15,6 +15,8 @@ const defaults = {
   queryTimeoutDefault: 30 * 1000,
   // 2 minutes. Max execution time for a full getScreen cycle.
   getScreenTimeoutDefault: 2 * 60 * 1000,
+  // 24 hours. Max age of cached feed data served after a failed fetch.
+  feedMaxAgeDefault: 24 * 60 * 60 * 1000,
 };
 
 export default defaults;

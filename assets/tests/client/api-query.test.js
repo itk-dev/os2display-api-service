@@ -164,6 +164,71 @@ describe("query", () => {
     await expect(query("testEndpoint", {})).rejects.toThrow("network");
   });
 
+  // The cache fallback is what keeps a screen rendering through an outage, but
+  // for feed data arbitrarily old content is worse than none: it looks current.
+  // maxAge bounds how stale the fallback may be, per call.
+  describe("maxAge on the cache fallback", () => {
+    const NOW = new Date("2025-06-15T12:00:00Z").getTime();
+    const ONE_HOUR = 60 * 60 * 1000;
+
+    beforeEach(() => {
+      vi.setSystemTime(NOW);
+      dispatchDefaults.unwrapResult = Promise.reject(new Error("network"));
+    });
+
+    it("returns cached data that is fresher than maxAge", async () => {
+      mockSelect.mockReturnValue(() => ({
+        data: { cached: true },
+        fulfilledTimeStamp: NOW - ONE_HOUR,
+      }));
+
+      const result = await query(
+        "testEndpoint",
+        { id: "abc" },
+        false,
+        2 * ONE_HOUR,
+      );
+
+      expect(result).toEqual({ cached: true });
+    });
+
+    it("rejects rather than serve cached data older than maxAge", async () => {
+      mockSelect.mockReturnValue(() => ({
+        data: { cached: true },
+        fulfilledTimeStamp: NOW - 3 * ONE_HOUR,
+      }));
+
+      await expect(
+        query("testEndpoint", { id: "abc" }, false, 2 * ONE_HOUR),
+      ).rejects.toThrow("network");
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("is too old"),
+      );
+    });
+
+    it("returns cached data of any age when no maxAge is given", async () => {
+      // Unchanged behaviour for screens, layouts, templates and media.
+      mockSelect.mockReturnValue(() => ({
+        data: { cached: true },
+        fulfilledTimeStamp: NOW - 400 * 24 * ONE_HOUR,
+      }));
+
+      const result = await query("testEndpoint", { id: "abc" });
+
+      expect(result).toEqual({ cached: true });
+    });
+
+    it("rejects when the cache entry has no fulfilledTimeStamp", async () => {
+      // Nothing proves it is fresh, so it cannot be served under a max age.
+      mockSelect.mockReturnValue(() => ({ data: { cached: true } }));
+
+      await expect(
+        query("testEndpoint", { id: "abc" }, false, 2 * ONE_HOUR),
+      ).rejects.toThrow("network");
+    });
+  });
+
   it("should call unsubscribe on success", async () => {
     dispatchDefaults.unwrapResult = Promise.resolve("ok");
 

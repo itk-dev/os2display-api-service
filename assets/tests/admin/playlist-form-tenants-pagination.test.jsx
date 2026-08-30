@@ -1,16 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, waitFor } from "@testing-library/react";
 
-const {
-  capturedDropdownData,
-  initiateMock,
-  dispatchMock,
-  useGetV2TenantsQueryMock,
-} = vi.hoisted(() => ({
+const { capturedDropdownData, initiateMock, dispatchMock } = vi.hoisted(() => ({
   capturedDropdownData: { current: null },
   initiateMock: vi.fn(),
   dispatchMock: vi.fn(),
-  useGetV2TenantsQueryMock: vi.fn(),
 }));
 
 vi.mock(
@@ -43,11 +37,10 @@ vi.mock("react-redux", () => ({
   useDispatch: () => dispatchMock,
 }));
 
-vi.mock("../../shared/redux/enhanced-api.ts", () => ({
+vi.mock("../../admin/redux/enhanced-api.ts", () => ({
   enhancedApi: {
     endpoints: { getV2Tenants: { initiate: initiateMock } },
   },
-  useGetV2TenantsQuery: useGetV2TenantsQueryMock,
 }));
 
 import UserContext from "../../admin/context/user-context";
@@ -71,7 +64,6 @@ beforeEach(() => {
   capturedDropdownData.current = null;
   initiateMock.mockReset();
   dispatchMock.mockReset();
-  useGetV2TenantsQueryMock.mockReset();
 
   initiateMock.mockImplementation((params) => ({ __initiate: true, params }));
   dispatchMock.mockImplementation((action) => {
@@ -93,10 +85,6 @@ beforeEach(() => {
     return Promise.resolve({
       data: { "hydra:member": [], "hydra:view": {} },
     });
-  });
-
-  useGetV2TenantsQueryMock.mockReturnValue({
-    data: { "hydra:member": page1 },
   });
 });
 

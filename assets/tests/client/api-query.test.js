@@ -1,0 +1,439 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+// --- Hoisted mocks ---
+//
+// RTK Query's dispatch(endpoint.initiate(args)) returns a "request" object
+// with { unwrap(), abort(), unsubscribe() }. We simulate that here so the
+// source's Promise.race / cleanup logic can be tested in isolation.
+//
+// dispatchDefaults.unwrapResult controls what unwrap() resolves/rejects with.
+// Set it in each test before calling query(). Tests that need per-call control
+// (e.g. pagination) override mockDispatch.mockImplementation() directly.
+//
+// mockSelect simulates clientApi.endpoints[name].select(args) which returns
+// a selector function (state => cacheEntry). The double-arrow mirrors the real
+// RTK Query API: select(args) returns (state) => ({ data, ... }).
+const { mockDispatch, endpoints, mockSelect, dispatchDefaults } = vi.hoisted(
+  () => {
+    const mockSelect = vi.fn(() => () => undefined);
+    const mockAbort = vi.fn();
+    const mockUnsubscribe = vi.fn();
+
+    const dispatchDefaults = {
+      unwrapResult: Promise.resolve("data"),
+      makeReturnValue() {
+        return {
+          unwrap: () => dispatchDefaults.unwrapResult,
+          abort: mockAbort,
+          unsubscribe: mockUnsubscribe,
+        };
+      },
+    };
+
+    const mockDispatch = vi.fn(() => dispatchDefaults.makeReturnValue());
+
+    mockDispatch._abort = mockAbort;
+    mockDispatch._unsubscribe = mockUnsubscribe;
+
+    const endpoints = {};
+    const initiate = vi.fn((args, opts) => ({
+      _endpoint: "testEndpoint",
+      _args: args,
+      _opts: opts,
+    }));
+    endpoints.testEndpoint = { initiate, select: mockSelect };
+
+    return { mockDispatch, endpoints, mockSelect, dispatchDefaults };
+  },
+);
+
+vi.mock("../../client/core/logger.js", () => ({
+  default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
+}));
+
+vi.mock("../../client/redux/store.js", () => ({
+  clientStore: { dispatch: mockDispatch, getState: () => ({}) },
+}));
+
+vi.mock("../../client/redux/enhanced-api.ts", () => ({
+  clientApi: {
+    endpoints,
+    reducerPath: "clientApi",
+    reducer: (state = {}) => state,
+    middleware: () => (next) => (action) => next(action),
+  },
+}));
+
+vi.mock("../../client/util/defaults.js", () => ({
+  default: { queryTimeoutDefault: 500 },
+}));
+
+import { query, queryAllPages } from "../../client/core/api-query.js";
+import logger from "../../client/core/logger.js";
+
+describe("query", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    // Restore default implementation (mockImplementation from prior tests persists through clearAllMocks).
+    mockDispatch.mockImplementation(() => dispatchDefaults.makeReturnValue());
+    dispatchDefaults.unwrapResult = Promise.resolve("data");
+    mockSelect.mockReturnValue(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("should resolve with unwrapped data when fetch succeeds", async () => {
+    dispatchDefaults.unwrapResult = Promise.resolve({ id: 1 });
+
+    const result = await query("testEndpoint", { id: "abc" });
+
+    expect(result).toEqual({ id: 1 });
+  });
+
+  it("should pass forceRefetch false by default", () => {
+    query("testEndpoint", { id: "abc" });
+
+    expect(endpoints.testEndpoint.initiate).toHaveBeenCalledWith(
+      { id: "abc" },
+      { forceRefetch: false },
+    );
+  });
+
+  it("should pass forceRefetch true when requested", () => {
+    query("testEndpoint", { id: "abc" }, true);
+
+    expect(endpoints.testEndpoint.initiate).toHaveBeenCalledWith(
+      { id: "abc" },
+      { forceRefetch: true },
+    );
+  });
+
+  it("should reject with timeout error when fetch exceeds queryTimeoutDefault", async () => {
+    dispatchDefaults.unwrapResult = new Promise(() => {}); // never resolves
+
+    const promise = query("testEndpoint", {});
+    vi.advanceTimersByTime(500);
+
+    await expect(promise).rejects.toThrow("Request timeout: testEndpoint");
+  });
+
+  it("should call request.abort on timeout", async () => {
+    dispatchDefaults.unwrapResult = new Promise(() => {});
+
+    const promise = query("testEndpoint", {});
+    vi.advanceTimersByTime(500);
+
+    await promise.catch(() => {});
+    expect(mockDispatch._abort).toHaveBeenCalled();
+  });
+
+  it("should return cached data when fetch fails but cache exists", async () => {
+    dispatchDefaults.unwrapResult = Promise.reject(new Error("network"));
+    mockSelect.mockReturnValue(() => ({ data: { cached: true } }));
+
+    const result = await query("testEndpoint", { id: "abc" });
+
+    expect(result).toEqual({ cached: true });
+  });
+
+  it("should log warning when falling back to cached data", async () => {
+    dispatchDefaults.unwrapResult = Promise.reject(new Error("network"));
+    mockSelect.mockReturnValue(() => ({ data: { cached: true } }));
+
+    await query("testEndpoint", { id: "abc" });
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Using cached data for testEndpoint after fetch failure.",
+    );
+  });
+
+  it("should re-throw when fetch fails and no cache exists", async () => {
+    dispatchDefaults.unwrapResult = Promise.reject(new Error("network"));
+    mockSelect.mockReturnValue(() => undefined);
+
+    await expect(query("testEndpoint", {})).rejects.toThrow("network");
+  });
+
+  it("should re-throw when cached data is undefined", async () => {
+    dispatchDefaults.unwrapResult = Promise.reject(new Error("network"));
+    mockSelect.mockReturnValue(() => ({ data: undefined }));
+
+    await expect(query("testEndpoint", {})).rejects.toThrow("network");
+  });
+
+  // The cache fallback is what keeps a screen rendering through an outage, but
+  // for feed data arbitrarily old content is worse than none: it looks current.
+  // maxAge bounds how stale the fallback may be, per call.
+  describe("maxAge on the cache fallback", () => {
+    const NOW = new Date("2025-06-15T12:00:00Z").getTime();
+    const ONE_HOUR = 60 * 60 * 1000;
+
+    beforeEach(() => {
+      vi.setSystemTime(NOW);
+      dispatchDefaults.unwrapResult = Promise.reject(new Error("network"));
+    });
+
+    it("returns cached data that is fresher than maxAge", async () => {
+      mockSelect.mockReturnValue(() => ({
+        data: { cached: true },
+        fulfilledTimeStamp: NOW - ONE_HOUR,
+      }));
+
+      const result = await query(
+        "testEndpoint",
+        { id: "abc" },
+        false,
+        2 * ONE_HOUR,
+      );
+
+      expect(result).toEqual({ cached: true });
+    });
+
+    it("rejects rather than serve cached data older than maxAge", async () => {
+      mockSelect.mockReturnValue(() => ({
+        data: { cached: true },
+        fulfilledTimeStamp: NOW - 3 * ONE_HOUR,
+      }));
+
+      await expect(
+        query("testEndpoint", { id: "abc" }, false, 2 * ONE_HOUR),
+      ).rejects.toThrow("network");
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("is too old"),
+      );
+    });
+
+    it("returns cached data of any age when no maxAge is given", async () => {
+      // Unchanged behaviour for screens, layouts, templates and media.
+      mockSelect.mockReturnValue(() => ({
+        data: { cached: true },
+        fulfilledTimeStamp: NOW - 400 * 24 * ONE_HOUR,
+      }));
+
+      const result = await query("testEndpoint", { id: "abc" });
+
+      expect(result).toEqual({ cached: true });
+    });
+
+    it("rejects when the cache entry has no fulfilledTimeStamp", async () => {
+      // Nothing proves it is fresh, so it cannot be served under a max age.
+      mockSelect.mockReturnValue(() => ({ data: { cached: true } }));
+
+      await expect(
+        query("testEndpoint", { id: "abc" }, false, 2 * ONE_HOUR),
+      ).rejects.toThrow("network");
+    });
+  });
+
+  it("should call unsubscribe on success", async () => {
+    dispatchDefaults.unwrapResult = Promise.resolve("ok");
+
+    await query("testEndpoint", {});
+
+    expect(mockDispatch._unsubscribe).toHaveBeenCalled();
+  });
+
+  it("should call unsubscribe on error", async () => {
+    dispatchDefaults.unwrapResult = Promise.reject(new Error("fail"));
+    mockSelect.mockReturnValue(() => undefined);
+
+    await query("testEndpoint", {}).catch(() => {});
+
+    expect(mockDispatch._unsubscribe).toHaveBeenCalled();
+  });
+});
+
+describe("queryAllPages", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    mockDispatch.mockImplementation(() => dispatchDefaults.makeReturnValue());
+    dispatchDefaults.unwrapResult = Promise.resolve("data");
+    mockSelect.mockReturnValue(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("should return hydra:member from a single page with no hydra:next", async () => {
+    dispatchDefaults.unwrapResult = Promise.resolve({
+      "hydra:member": [{ id: 1 }, { id: 2 }],
+      "hydra:view": {},
+    });
+
+    const result = await queryAllPages("testEndpoint", {});
+
+    expect(result).toEqual([{ id: 1 }, { id: 2 }]);
+  });
+
+  it("should concatenate members across multiple pages", async () => {
+    let callCount = 0;
+    mockDispatch.mockImplementation(() => {
+      callCount += 1;
+      const page = callCount;
+      return {
+        unwrap: () =>
+          Promise.resolve({
+            "hydra:member": [{ id: page }],
+            "hydra:view": page < 3 ? { "hydra:next": `/page/${page + 1}` } : {},
+          }),
+        abort: vi.fn(),
+        unsubscribe: vi.fn(),
+      };
+    });
+
+    const result = await queryAllPages("testEndpoint", {});
+
+    expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
+  });
+
+  it("should stop when hydra:view has no hydra:next", async () => {
+    dispatchDefaults.unwrapResult = Promise.resolve({
+      "hydra:member": [{ id: 1 }],
+      "hydra:view": { "hydra:last": "/page/1" },
+    });
+
+    const result = await queryAllPages("testEndpoint", {});
+
+    expect(result).toEqual([{ id: 1 }]);
+    expect(mockDispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("should stop when the reported count exceeds the rows delivered", async () => {
+    // Regression test for #517: hydra:totalItems reports 20 while only 11 rows
+    // are deliverable. Observed in production 2026-08-11 08:57:23, where the
+    // previous count-based loop turned one such response into ~435k requests
+    // over 21 hours. Following hydra:next ends it at the last page instead.
+    let callCount = 0;
+    mockDispatch.mockImplementation(() => {
+      callCount += 1;
+      const page = callCount;
+      const members = page === 1 ? new Array(10).fill({ id: 1 }) : [{ id: 2 }];
+      return {
+        unwrap: () =>
+          Promise.resolve({
+            "hydra:member": members,
+            "hydra:totalItems": 20,
+            // Page 2 is the last page that exists, so it carries no next link.
+            "hydra:view":
+              page === 1 ? { "hydra:next": "/page/2" } : { "@id": "/page/2" },
+          }),
+        abort: vi.fn(),
+        unsubscribe: vi.fn(),
+      };
+    });
+
+    const result = await queryAllPages("testEndpoint", {});
+
+    expect(result).toHaveLength(11);
+    expect(mockDispatch).toHaveBeenCalledTimes(2);
+  });
+
+  it("should stop on an empty page even when hydra:next is present", async () => {
+    // A collection that keeps advertising a next link without delivering rows
+    // must not be able to keep the loop alive.
+    mockDispatch.mockImplementation(() => ({
+      unwrap: () =>
+        Promise.resolve({
+          "hydra:member": [],
+          "hydra:view": { "hydra:next": "/next" },
+        }),
+      abort: vi.fn(),
+      unsubscribe: vi.fn(),
+    }));
+
+    const result = await queryAllPages("testEndpoint", {});
+
+    expect(result).toEqual([]);
+    expect(mockDispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("should reject rather than return partial results when a page throws", async () => {
+    // Giving up the whole collection keeps a truncated playlist from reaching a
+    // screen as if it were complete.
+    let callCount = 0;
+    mockDispatch.mockImplementation(() => {
+      callCount += 1;
+      const page = callCount;
+      if (page === 2) {
+        return {
+          unwrap: () => Promise.reject(new Error("fail page 2")),
+          abort: vi.fn(),
+          unsubscribe: vi.fn(),
+        };
+      }
+      return {
+        unwrap: () =>
+          Promise.resolve({
+            "hydra:member": [{ id: page }],
+            "hydra:view": { "hydra:next": `/page/${page + 1}` },
+          }),
+        abort: vi.fn(),
+        unsubscribe: vi.fn(),
+      };
+    });
+
+    await expect(queryAllPages("testEndpoint", {})).rejects.toThrow(
+      "fail page 2",
+    );
+  });
+
+  it("should reject when page 1 returns null", async () => {
+    dispatchDefaults.unwrapResult = Promise.resolve(null);
+
+    await expect(queryAllPages("testEndpoint", {})).rejects.toThrow(
+      "Failed to fetch page 1 for testEndpoint",
+    );
+  });
+
+  it("should log error on null response", async () => {
+    dispatchDefaults.unwrapResult = Promise.resolve(null);
+
+    await expect(queryAllPages("testEndpoint", {})).rejects.toThrow();
+
+    expect(logger.error).toHaveBeenCalledWith(
+      "Failed to fetch page 1 for testEndpoint",
+    );
+  });
+
+  it("should pass forceRefetch through to query", async () => {
+    dispatchDefaults.unwrapResult = Promise.resolve({
+      "hydra:member": [],
+      "hydra:view": {},
+    });
+
+    await queryAllPages("testEndpoint", { filter: "x" }, true);
+
+    expect(endpoints.testEndpoint.initiate).toHaveBeenCalledWith(
+      { filter: "x", page: 1 },
+      { forceRefetch: true },
+    );
+  });
+
+  it("should reject at MAX_PAGES rather than return a truncated collection", async () => {
+    mockDispatch.mockImplementation(() => ({
+      unwrap: () =>
+        Promise.resolve({
+          "hydra:member": [{ id: "item" }],
+          "hydra:view": { "hydra:next": "/next" },
+        }),
+      abort: vi.fn(),
+      unsubscribe: vi.fn(),
+    }));
+
+    // The cap is the pathological case #517 describes, so returning the rows
+    // collected so far would be the one path where a silently truncated
+    // collection still reaches a screen.
+    await expect(queryAllPages("testEndpoint", {})).rejects.toThrow(
+      "Reached max page limit (100) for testEndpoint",
+    );
+    expect(logger.error).toHaveBeenCalledWith(
+      "Reached max page limit (100) for testEndpoint",
+    );
+  });
+});

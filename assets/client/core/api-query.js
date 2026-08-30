@@ -1,0 +1,137 @@
+import logger from "./logger.js";
+import { clientStore } from "../redux/store.js";
+import { clientApi } from "../redux/enhanced-api.ts";
+import defaults from "../util/defaults.js";
+
+/**
+ * Dispatch an RTK Query endpoint and return the unwrapped result.
+ *
+ * On failure the RTK Query cache is used as a fallback, which is what keeps a
+ * screen rendering through a network outage. `maxAge` bounds how stale that
+ * fallback may be, for resources where old data is worse than no data.
+ *
+ * @param {string} endpoint The endpoint name.
+ * @param {object} args The endpoint args.
+ * @param {boolean} forceRefetch Whether to bypass RTK Query cache.
+ * @param {number} [maxAge] Max age in ms of cached data served after a failed
+ *   fetch. Undefined means any cached data is acceptable.
+ * @returns {Promise<any>} The result data.
+ */
+export function query(
+  endpoint,
+  args,
+  forceRefetch = false,
+  maxAge = undefined,
+) {
+  const request = clientStore.dispatch(
+    clientApi.endpoints[endpoint].initiate(args, { forceRefetch }),
+  );
+
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      request.abort();
+      reject(new Error(`Request timeout: ${endpoint}`));
+    }, defaults.queryTimeoutDefault);
+  });
+
+  return Promise.race([request.unwrap(), timeout])
+    .catch((err) => {
+      const cached = clientApi.endpoints[endpoint].select(args)(
+        clientStore.getState(),
+      );
+      if (cached?.data) {
+        if (maxAge !== undefined) {
+          // fulfilledTimeStamp is the last *successful* fetch. A failed refetch
+          // sets only status and error, so it survives any number of them.
+          const age = Date.now() - cached.fulfilledTimeStamp;
+
+          // A missing timestamp cannot be shown to be fresh, so treat it as old.
+          if (!(cached.fulfilledTimeStamp >= 0) || age > maxAge) {
+            logger.warn(
+              `Cached data for ${endpoint} is too old (age: ${age}ms, max: ${maxAge}ms). Not using it.`,
+            );
+
+            throw err;
+          }
+        }
+
+        logger.warn(`Using cached data for ${endpoint} after fetch failure.`);
+        return cached.data;
+      }
+      throw err;
+    })
+    .finally(() => {
+      clearTimeout(timeoutId);
+      request.unsubscribe();
+    });
+}
+
+// Backstop so a misbehaving collection cannot page indefinitely. Matches the
+// limit used by the admin's get-all-pages helper.
+const MAX_PAGES = 100;
+
+/**
+ * Fetch all pages from a paginated endpoint.
+ *
+ * Pages by following `hydra:view['hydra:next']`, the same termination the admin
+ * uses in components/util/helpers/get-all-pages.js. A missing `hydra:next`
+ * always means there is nothing more to fetch: API Platform omits it on the last
+ * page, on out-of-range pages, and on single-page collections. Deciding from the
+ * links rather than comparing the collected count against `hydra:totalItems`
+ * means a count that disagrees with the rows actually returned can no longer
+ * produce an endless run of requests (issue #517).
+ *
+ * Anything that leaves the collection incomplete — a failed page, or hitting
+ * MAX_PAGES — gives it up by rejecting, so a caller can never mistake a
+ * truncated result for a complete one. Hitting the cap is the pathological case
+ * #517 describes, so it is the last place that should return rows anyway.
+ *
+ * @param {string} endpoint The endpoint name.
+ * @param {object} args The endpoint args (page will be added).
+ * @param {boolean} forceRefetch Whether to bypass RTK Query cache.
+ * @returns {Promise<Array>} All hydra:member results concatenated.
+ */
+export async function queryAllPages(endpoint, args, forceRefetch = false) {
+  let results = [];
+  let page = 1;
+
+  do {
+    let responseData;
+
+    try {
+      responseData = await query(endpoint, { ...args, page }, forceRefetch);
+    } catch (err) {
+      logger.error(`Failed to fetch all pages for ${endpoint}: ${err.message}`);
+      throw err;
+    }
+
+    if (responseData === null || responseData === undefined) {
+      logger.error(`Failed to fetch page ${page} for ${endpoint}`);
+      throw new Error(`Failed to fetch page ${page} for ${endpoint}`);
+    }
+
+    const members = responseData["hydra:member"] ?? [];
+
+    // An empty page also stops us, so a collection that offers a next link
+    // without delivering members cannot keep the loop alive.
+    if (members.length === 0) {
+      break;
+    }
+
+    results = results.concat(members);
+
+    if (responseData["hydra:view"]?.["hydra:next"]) {
+      page += 1;
+    } else {
+      break;
+    }
+  } while (page <= MAX_PAGES);
+
+  if (page > MAX_PAGES) {
+    logger.error(`Reached max page limit (${MAX_PAGES}) for ${endpoint}`);
+    throw new Error(`Reached max page limit (${MAX_PAGES}) for ${endpoint}`);
+  }
+
+  return results;
+}

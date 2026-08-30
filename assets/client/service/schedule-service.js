@@ -1,11 +1,11 @@
 import sha256 from "crypto-js/sha256";
 import Md5 from "crypto-js/md5";
 import Base64 from "crypto-js/enc-base64";
-import isPublished from "../util/isPublished";
-import logger from "../logger/logger";
-import ClientConfigLoader from "../util/client-config-loader.js";
+import isPublished from "../util/is-published";
+import logger from "../core/logger.js";
+import ClientConfigLoader from "../core/client-config-loader.js";
 import ScheduleUtils from "../util/schedule";
-import { cloneDeep } from "lodash";
+import defaults from "../util/defaults";
 
 /**
  * ScheduleService.
@@ -20,10 +20,40 @@ class ScheduleService {
 
   contentEmpty = true;
 
-  constructor() {
+  stopped = false;
+
+  /**
+   * @param {object} callbacks - Ref object with setIsContentEmpty and updateRegionSlides.
+   */
+  constructor(callbacks) {
+    this.callbacks = callbacks;
     this.updateRegion = this.updateRegion.bind(this);
     this.checkForEmptyContent = this.checkForEmptyContent.bind(this);
     this.sendSlides = this.sendSlides.bind(this);
+    this.stopAll = this.stopAll.bind(this);
+  }
+
+  /**
+   * Stop scheduling for every region.
+   *
+   * regionRemoved() only ever clears one region at a time, and it is driven by
+   * Region unmounts. ContentService.stop() replaces onRegionRemoved with a
+   * no-op before the screen is cleared, so those unmounts arrive nowhere and the
+   * abandoned service keeps one interval per region alive, pushing slides into a
+   * React tree that has moved on. On the reauth path that happens once per
+   * failed refresh, so the intervals accumulate for as long as the device runs.
+   */
+  stopAll() {
+    logger.info("Stopping all scheduling intervals.");
+
+    this.stopped = true;
+
+    Object.values(this.intervals).forEach((interval) => {
+      clearInterval(interval);
+    });
+
+    this.intervals = {};
+    this.regions = {};
   }
 
   checkForEmptyContent() {
@@ -37,12 +67,7 @@ class ScheduleService {
 
     if (contentEmpty !== this.contentEmpty) {
       this.contentEmpty = contentEmpty;
-
-      // Deliver result to rendering
-      const event = new Event(
-        contentEmpty ? "contentEmpty" : "contentNotEmpty",
-      );
-      document.dispatchEvent(event);
+      this.callbacks.current.setIsContentEmpty(contentEmpty);
     }
   }
 
@@ -72,6 +97,12 @@ class ScheduleService {
   updateRegion(regionId, region) {
     logger.info(`ScheduleService: updateRegion(${regionId})`);
 
+    // A pull already in flight when the service was torn down still lands here.
+    if (this.stopped) {
+      logger.info("ScheduleService: stopped, ignoring region update.");
+      return;
+    }
+
     if (!region || !regionId) {
       logger.info(`ScheduleService: regionId and/or region not set.`);
       return;
@@ -95,10 +126,19 @@ class ScheduleService {
 
     if (!Object.prototype.hasOwnProperty.call(intervals, regionId)) {
       ClientConfigLoader.loadConfig().then((config) => {
-        const schedulingInterval = config?.schedulingInterval ?? 60000;
+        const schedulingInterval =
+          config?.schedulingInterval ?? defaults.schedulingIntervalDefault;
 
-        // Extra check because of async.
-        if (!Object.prototype.hasOwnProperty.call(intervals, regionId)) {
+        // Extra checks because of async — the region may have been removed, or
+        // the whole service torn down, while the config was loading. `intervals`
+        // is the map captured before the await; stopAll() swaps in a fresh one,
+        // so testing this.stopped is what keeps a late registration from landing
+        // on the live map.
+        if (
+          !this.stopped &&
+          !Object.prototype.hasOwnProperty.call(intervals, regionId) &&
+          Object.prototype.hasOwnProperty.call(this.regions, regionId)
+        ) {
           logger.info(
             `registering scheduling interval for region: ${regionId}, with an update rate of ${schedulingInterval}`,
           );
@@ -127,6 +167,15 @@ class ScheduleService {
 
     const region = this.regions[regionId];
 
+    if (!region) {
+      // Region was removed while the interval registration was in-flight.
+      if (Object.prototype.hasOwnProperty.call(this.intervals, regionId)) {
+        clearInterval(this.intervals[regionId]);
+        delete this.intervals[regionId];
+      }
+      return;
+    }
+
     // Extract slides from playlists.
     const slides = ScheduleService.findScheduledSlides(region.region, regionId);
 
@@ -138,7 +187,7 @@ class ScheduleService {
 
     // Update region.
     this.regions[regionId].hash = hash;
-    this.regions[regionId].slide = slides;
+    this.regions[regionId].slides = slides;
 
     if (newContent) {
       // Send slides to region.
@@ -156,13 +205,7 @@ class ScheduleService {
    */
   sendSlides(regionId, slides) {
     logger.info(`sendSlides regionContent-${regionId}`);
-    const event = new CustomEvent(`regionContent-${regionId}`, {
-      detail: {
-        slides,
-      },
-    });
-    document.dispatchEvent(event);
-
+    this.callbacks.current.updateRegionSlides(regionId, slides);
     this.checkForEmptyContent();
   }
 
@@ -214,15 +257,14 @@ class ScheduleService {
             return;
           }
 
-          const newSlide = cloneDeep(slide);
-
           // Execution id is the product of region, playlist and slide id, to ensure uniqueness in the client.
-          const executionId = Md5(regionId + playlist["@id"] + slide["@id"]);
-          newSlide.executionId = `EXE-ID-${executionId}`;
-          slides.push(newSlide);
+          const executionId = Md5(
+            regionId + playlist["@id"] + slide["@id"],
+          ).toString();
+          slides.push({ ...slide, executionId: `EXE-ID-${executionId}` });
         });
       } else {
-        logger.log("info", `Playlist ${playlist["@id"]} not scheduled for now`);
+        logger.info(`Playlist ${playlist["@id"]} not scheduled for now`);
       }
     });
 

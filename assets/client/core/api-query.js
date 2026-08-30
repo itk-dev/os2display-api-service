@@ -56,8 +56,10 @@ const MAX_PAGES = 100;
  * means a count that disagrees with the rows actually returned can no longer
  * produce an endless run of requests (issue #517).
  *
- * A page that fails gives up the whole collection by rejecting, so a caller can
- * never mistake a truncated result for a complete one.
+ * Anything that leaves the collection incomplete — a failed page, or hitting
+ * MAX_PAGES — gives it up by rejecting, so a caller can never mistake a
+ * truncated result for a complete one. Hitting the cap is the pathological case
+ * #517 describes, so it is the last place that should return rows anyway.
  *
  * @param {string} endpoint The endpoint name.
  * @param {object} args The endpoint args (page will be added).
@@ -101,7 +103,8 @@ export async function queryAllPages(endpoint, args, forceRefetch = false) {
   } while (page <= MAX_PAGES);
 
   if (page > MAX_PAGES) {
-    logger.warn(`Reached max page limit (${MAX_PAGES}) for ${endpoint}`);
+    logger.error(`Reached max page limit (${MAX_PAGES}) for ${endpoint}`);
+    throw new Error(`Reached max page limit (${MAX_PAGES}) for ${endpoint}`);
   }
 
   return results;

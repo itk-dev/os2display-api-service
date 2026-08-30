@@ -350,7 +350,7 @@ describe("queryAllPages", () => {
     );
   });
 
-  it("should stop at MAX_PAGES and log warning", async () => {
+  it("should reject at MAX_PAGES rather than return a truncated collection", async () => {
     mockDispatch.mockImplementation(() => ({
       unwrap: () =>
         Promise.resolve({
@@ -361,10 +361,13 @@ describe("queryAllPages", () => {
       unsubscribe: vi.fn(),
     }));
 
-    const result = await queryAllPages("testEndpoint", {});
-
-    expect(result).toHaveLength(100);
-    expect(logger.warn).toHaveBeenCalledWith(
+    // The cap is the pathological case #517 describes, so returning the rows
+    // collected so far would be the one path where a silently truncated
+    // collection still reaches a screen.
+    await expect(queryAllPages("testEndpoint", {})).rejects.toThrow(
+      "Reached max page limit (100) for testEndpoint",
+    );
+    expect(logger.error).toHaveBeenCalledWith(
       "Reached max page limit (100) for testEndpoint",
     );
   });

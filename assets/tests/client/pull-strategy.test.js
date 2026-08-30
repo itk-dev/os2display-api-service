@@ -322,6 +322,35 @@ describe("PullStrategy.getScreen", () => {
         expect.stringContaining("not loaded. Aborting content update"),
       );
     });
+
+    // A collection we could not read in full is not an empty collection. The
+    // cycle is given up so the screen keeps the content it already has, rather
+    // than blanking the region until the next successful pull.
+    it("aborts rather than blanking a region when playlist slides fail", async () => {
+      setupBasicResponses({
+        getV2PlaylistsByIdSlides: () =>
+          Promise.reject(new Error("Slides page error")),
+      });
+
+      await expect(strategy.getScreen(SCREEN_PATH)).rejects.toThrow(
+        "Failed to fetch slides for 1 playlist(s).",
+      );
+
+      expect(contentCapture.callCount).toBe(0);
+    });
+
+    it("aborts rather than dropping a region when its playlists fail", async () => {
+      setupBasicResponses({
+        getV2ScreensByIdRegionsAndRegionIdPlaylists: () =>
+          Promise.reject(new Error("Region error")),
+      });
+
+      await expect(strategy.getScreen(SCREEN_PATH)).rejects.toThrow(
+        "Failed to fetch playlists for 1 region(s).",
+      );
+
+      expect(contentCapture.callCount).toBe(0);
+    });
   });
 
   describe("slide enrichment", () => {

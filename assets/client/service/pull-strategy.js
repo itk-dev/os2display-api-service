@@ -176,14 +176,25 @@ class PullStrategy {
     });
 
     const results = await Promise.allSettled(promises);
-    results.forEach((result) => {
-      if (result.status === "fulfilled") {
-        regionData[result.value.regionId] = result.value.results.map(
-          ({ playlist }) => playlist,
-        );
-      } else {
+    const failed = results.filter((result) => result.status === "rejected");
+
+    // A region we could not list is not an empty region. Give the whole cycle
+    // up so the screen keeps the content it already has, rather than blanking
+    // the region until the next successful pull.
+    if (failed.length > 0) {
+      failed.forEach((result) => {
         logger.warn(`Failed to fetch region playlists: ${result.reason}`);
-      }
+      });
+
+      throw new Error(
+        `Failed to fetch playlists for ${failed.length} region(s).`,
+      );
+    }
+
+    results.forEach((result) => {
+      regionData[result.value.regionId] = result.value.results.map(
+        ({ playlist }) => playlist,
+      );
     });
 
     return regionData;
@@ -226,16 +237,24 @@ class PullStrategy {
     }
 
     const results = await Promise.allSettled(promises);
-    results.forEach((result) => {
-      if (result.status === "fulfilled") {
-        regionData[result.value.regionKey][
-          result.value.playlistKey
-        ].slidesData = result.value.results.map(
-          (playlistSlide) => playlistSlide.slide,
-        );
-      } else {
+    const failed = results.filter((result) => result.status === "rejected");
+
+    // Leaving slidesData unset would let enrichSlides fall back to an empty
+    // list, blanking the region. Give the whole cycle up instead so the screen
+    // keeps its current content and retries on the next pull.
+    if (failed.length > 0) {
+      failed.forEach((result) => {
         logger.warn(`Failed to fetch playlist slides: ${result.reason}`);
-      }
+      });
+
+      throw new Error(
+        `Failed to fetch slides for ${failed.length} playlist(s).`,
+      );
+    }
+
+    results.forEach((result) => {
+      regionData[result.value.regionKey][result.value.playlistKey].slidesData =
+        result.value.results.map((playlistSlide) => playlistSlide.slide);
     });
 
     return regionData;

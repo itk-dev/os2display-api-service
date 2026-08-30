@@ -203,6 +203,7 @@ services:
             $releaseTimestampIntervalTimeout: '%env(int:CLIENT_RELEASE_TIMESTAMP_INTERVAL_TIMEOUT)%'
             $schedulingInterval: '%env(int:CLIENT_SCHEDULING_INTERVAL)%'
             $pullStrategyInterval: '%env(int:CLIENT_PULL_STRATEGY_INTERVAL)%'
+            $feedMaxAge: '%env(int:CLIENT_FEED_MAX_AGE)%'
             $colorScheme: '%env(json:CLIENT_COLOR_SCHEME)%'
             $debug: '%env(bool:CLIENT_DEBUG)%'
             $relationsChecksumEnabled: '%env(bool:RELATIONS_CHECKSUM_ENABLED)%'

@@ -25,10 +25,18 @@ function Screen({ screen }) {
   const gridTemplateRows = "1fr ".repeat(configRows);
   const colorSchemeIntervalRef = useRef(null);
 
+  // The swap below is load-bearing, not a typo. createGrid() builds its outer
+  // array from `columns`, and each quoted string it emits is a CSS *row* whose
+  // names are CSS *columns* — so the areas it returns are transposed relative to
+  // its argument names. Assigning the track lists straight through leaves them
+  // disagreeing with the areas on every layout where rows !== columns.
+  // Straightening this out means fixing createGrid or the layout JSON
+  // convention; see os2display/display-api-service#389 (closed) and
+  // itk-dev/os2display-api-service#6.
   const rootStyle = {
     gridTemplateAreas: createGrid(configColumns, configRows),
-    gridTemplateColumns,
-    gridTemplateRows,
+    gridTemplateColumns: gridTemplateRows,
+    gridTemplateRows: gridTemplateColumns,
   };
 
   const refreshColorScheme = () => {

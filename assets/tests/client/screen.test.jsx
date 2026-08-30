@@ -126,9 +126,16 @@ describe("Screen", () => {
     const screen = makeScreen([], { rows: 2, columns: 3 });
     const { container } = render(<Screen screen={screen} />);
     const el = container.querySelector(".screen");
+
+    // Deliberately crossed: createGrid() returns areas transposed relative to
+    // its argument names, so the track lists are swapped to match. Asserting
+    // the intuitive 3-columns/2-rows here would pin a layout bug that
+    // misrenders every layout where rows !== columns. createGrid is mocked
+    // above, so this test cannot see the mismatch itself — see the comment in
+    // client/components/screen.jsx.
     // jsdom trims trailing whitespace from CSS values.
-    expect(el.style.gridTemplateColumns).toBe("1fr 1fr 1fr");
-    expect(el.style.gridTemplateRows).toBe("1fr 1fr");
+    expect(el.style.gridTemplateColumns).toBe("1fr 1fr");
+    expect(el.style.gridTemplateRows).toBe("1fr 1fr 1fr");
   });
 
   it("renders screen div with no child regions when regions array is empty", () => {

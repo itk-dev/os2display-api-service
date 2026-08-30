@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Rewrote the screen client's data layer onto RTK Query and React context, replacing the hand-rolled
+  fetch helper and the `document` CustomEvent bus.
+- Reduced the client's generated API client to the 16 endpoints it calls (was all 86), so a screen no
+  longer ships the admin's create, update and delete operations.
+- Fixed a campaign showing twice when a screen reached it through more than one screen group.
+- Fixed any key press, rather than only Enter or Space, advancing a slide in touch regions.
+- Fixed the client leaving one scheduling interval per region running after a failed token refresh,
+  accumulating timers for as long as the screen ran.
+- Fixed a timed-out content pull overwriting a newer pull's relations checksums, which could convince
+  the client nothing had changed and stop it fetching new content.
+- Changed the client to abandon a content update it cannot complete rather than show a partial one:
+  a failed page of a paginated collection no longer blanks a region or truncates a playlist.
+- Changed the client to drop a slide whose feed data is unavailable or more than 24 hours old, rather
+  than render the template against an empty data set.
+- Fixed an undefined `useGetV2MediaByIdQuery` export in the admin's enhanced API client.
+
 ## [3.0.0-rc8] - 2026-08-24
 
 - Removed the `app:utils:convert-config-json-to-env` command, superseded by 2.8's

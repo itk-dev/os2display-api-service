@@ -109,7 +109,7 @@ export const {
   useLoginCheckPostMutation,
   useGetV2MediaQuery,
   usePostMediaCollectionMutation,
-  useGetv2MediaByIdQuery,
+  useGetV2MediaByIdQuery,
   useDeleteV2MediaByIdMutation,
   useGetV2CampaignsByIdScreenGroupsQuery,
   useGetV2CampaignsByIdScreensQuery,

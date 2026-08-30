@@ -36,6 +36,12 @@ class PullStrategy {
 
   previousHadActiveCampaign = false;
 
+  // Identifies the current pull cycle. The watchdog in pull() rejects the race
+  // but cannot cancel the getScreen behind it, so an orphaned cycle keeps
+  // running. Bumping this on every pull and stop lets that orphan recognise
+  // that it has been superseded, at the same points it already checks stopped.
+  pullGeneration = 0;
+
   // Fetch-interval in ms.
   interval;
 
@@ -264,9 +270,17 @@ class PullStrategy {
    * Fetch screen.
    *
    * @param {string} screenPath Path to the screen.
+   * @param {number} generation The pull cycle this call belongs to. Defaults to
+   *   the current one, so a direct call is never treated as superseded.
    */
-  async getScreen(screenPath) {
+  async getScreen(screenPath, generation = this.pullGeneration) {
     let screen;
+
+    // True once this cycle has been stopped or superseded by a newer pull. An
+    // orphan left behind by the watchdog must not deliver stale content, and
+    // above all must not write its checksums over a newer cycle's — that would
+    // make the next cycle believe nothing had changed and stop refetching.
+    const abandoned = () => this.stopped || generation !== this.pullGeneration;
 
     const screenId = idFromPath(screenPath);
     if (!screenId) {
@@ -302,7 +316,7 @@ class PullStrategy {
     }
 
     const config = await ClientConfigLoader.loadConfig();
-    if (this.stopped) return;
+    if (abandoned()) return;
 
     const relationChecksumEnabled = config.relationsChecksumEnabled;
 
@@ -327,7 +341,7 @@ class PullStrategy {
       newScreen,
       campaignsChanged,
     );
-    if (this.stopped) return;
+    if (abandoned()) return;
 
     if (newScreen.campaignsData.length > 0) {
       newScreen.campaignsData.forEach(({ published }) => {
@@ -349,13 +363,16 @@ class PullStrategy {
       );
       if (!success) return;
     }
-    if (this.stopped) return;
+    if (abandoned()) return;
 
     const nextSlideChecksums = await this.enrichSlides(
       newScreen.regionData,
       relationChecksumEnabled,
     );
-    if (this.stopped) return;
+
+    // Last gate before the writes below. Nothing awaits between here and
+    // onContent(), so passing it means this cycle is still the current one.
+    if (abandoned()) return;
 
     this.previousScreenChecksums = newScreen.relationsChecksum ?? {};
     this.previousSlideChecksums = nextSlideChecksums;
@@ -667,6 +684,12 @@ class PullStrategy {
     }
     this.pulling = true;
 
+    // Claim this cycle. Any earlier getScreen still running — one the watchdog
+    // below gave up on — is superseded from here on and will bail out instead
+    // of delivering content or writing its checksums.
+    this.pullGeneration += 1;
+    const generation = this.pullGeneration;
+
     let timeoutId;
     const guard = new Promise((_, reject) => {
       timeoutId = setTimeout(() => {
@@ -674,7 +697,7 @@ class PullStrategy {
       }, defaults.getScreenTimeoutDefault);
     });
 
-    Promise.race([this.getScreen(this.entryPoint), guard])
+    Promise.race([this.getScreen(this.entryPoint, generation), guard])
       .catch((err) => {
         logger.error(`Content update failed: ${err.message}`);
       })
@@ -697,6 +720,11 @@ class PullStrategy {
    */
   stop() {
     this.stopped = true;
+
+    // start() clears the stopped flag, so bumping the generation is what keeps
+    // a cycle abandoned here from coming back to life across a restart.
+    this.pullGeneration += 1;
+
     if (this.activeTimeout !== undefined) {
       clearTimeout(this.activeTimeout);
       this.activeTimeout = undefined;

@@ -679,4 +679,90 @@ describe("PullStrategy.pull", () => {
 
     expect(contentCapture.callCount).toBe(1);
   });
+
+  // The watchdog rejects the race but cannot cancel the getScreen behind it, so
+  // the abandoned cycle keeps running and eventually reaches its delivery and
+  // checksum writes. Overwriting a newer cycle's checksums is the damaging part:
+  // the next cycle would compare against the older values, conclude nothing had
+  // changed, and stop refetching.
+  it("ignores an orphaned cycle that finishes after a newer one", async () => {
+    let releaseConfig;
+    const hangingConfig = new Promise((resolve) => {
+      releaseConfig = () => resolve({ relationsChecksumEnabled: true });
+    });
+
+    // getScreen awaits loadConfig outside query()'s own timeout, so hanging
+    // there keeps the first cycle alive long enough for the watchdog to fire.
+    ClientConfigLoader.loadConfig
+      .mockReturnValueOnce(hangingConfig)
+      .mockResolvedValue({ relationsChecksumEnabled: true });
+
+    let screenCall = 0;
+    setupBasicResponses({
+      getV2ScreensById: () => {
+        screenCall += 1;
+        return Promise.resolve(
+          makeScreen({
+            relationsChecksum: {
+              campaigns: `c${screenCall}`,
+              inScreenGroups: `g${screenCall}`,
+              layout: `l${screenCall}`,
+              regions: `r${screenCall}`,
+            },
+          }),
+        );
+      },
+    });
+
+    // Cycle 1 stalls on loadConfig; the watchdog gives up on it at 2 minutes.
+    strategy.pull();
+    await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining("getScreen exceeded max execution time"),
+    );
+
+    // Cycle 2 runs to completion and records its checksums.
+    await vi.advanceTimersByTimeAsync(60000);
+
+    expect(contentCapture.callCount).toBe(1);
+    expect(strategy.previousScreenChecksums.campaigns).toBe("c2");
+
+    // Now let the orphan finish. It must not deliver, and must not roll the
+    // checksums back to its own older values.
+    releaseConfig();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(contentCapture.callCount).toBe(1);
+    expect(strategy.previousScreenChecksums.campaigns).toBe("c2");
+  });
+
+  it("abandons an in-flight cycle across a stop and restart", async () => {
+    let releaseConfig;
+    const hangingConfig = new Promise((resolve) => {
+      releaseConfig = () => resolve({ relationsChecksumEnabled: false });
+    });
+
+    ClientConfigLoader.loadConfig
+      .mockReturnValueOnce(hangingConfig)
+      .mockResolvedValue({ relationsChecksumEnabled: false });
+
+    setupBasicResponses();
+
+    strategy.pull();
+    await vi.advanceTimersByTimeAsync(0);
+
+    // start() clears the stopped flag, so the flag alone would let the stalled
+    // cycle resume as if it were still current.
+    strategy.stop();
+    strategy.start();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(contentCapture.callCount).toBe(1);
+
+    releaseConfig();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(contentCapture.callCount).toBe(1);
+  });
 });

@@ -16,8 +16,8 @@ All notable changes to this project will be documented in this file.
   the client nothing had changed and stop it fetching new content.
 - Changed the client to abandon a content update it cannot complete rather than show a partial one:
   a failed page of a paginated collection no longer blanks a region or truncates a playlist.
-- Changed the client to drop a slide whose feed data is unavailable or more than 24 hours old, rather
-  than render the template against an empty data set.
+- Changed the client to drop a slide whose feed data is unavailable or stale, rather than render the
+  template against an empty data set; the limit is the new `CLIENT_FEED_MAX_AGE`, default 24 hours.
 - Fixed an undefined `useGetV2MediaByIdQuery` export in the admin's enhanced API client.
 
 ## [3.0.0-rc8] - 2026-08-24

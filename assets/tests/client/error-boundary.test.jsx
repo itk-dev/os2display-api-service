@@ -30,7 +30,7 @@ describe("ErrorBoundary", () => {
     render(
       <ErrorBoundary>
         <div data-testid="child">Hello</div>
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(screen.getByTestId("child")).toBeInTheDocument();
   });
@@ -39,7 +39,7 @@ describe("ErrorBoundary", () => {
     render(
       <ErrorBoundary>
         <ThrowingComponent message="Test error" />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(screen.getByText("Seneste log hændelser")).toBeInTheDocument();
     expect(screen.getByText(/Test error/)).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe("ErrorBoundary", () => {
     render(
       <ErrorBoundary errorHandler={errorHandler}>
         <ThrowingComponent message="Test error" />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(errorHandler).toHaveBeenCalledTimes(1);
     expect(errorHandler.mock.calls[0][0].message).toBe("Test error");
@@ -60,7 +60,7 @@ describe("ErrorBoundary", () => {
     render(
       <ErrorBoundary>
         <ThrowingComponent message="No handler" />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(screen.getByText(/No handler/)).toBeInTheDocument();
   });
@@ -69,14 +69,14 @@ describe("ErrorBoundary", () => {
     const { rerender } = render(
       <ErrorBoundary resetKey="a">
         <ThrowingComponent message="boom" />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(screen.getByText(/boom/)).toBeInTheDocument();
 
     rerender(
       <ErrorBoundary resetKey="b">
         <div data-testid="recovered">OK</div>
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(screen.getByTestId("recovered")).toBeInTheDocument();
   });
@@ -85,14 +85,14 @@ describe("ErrorBoundary", () => {
     const { rerender } = render(
       <ErrorBoundary resetKey="a">
         <ThrowingComponent message="boom" />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(screen.getByText(/boom/)).toBeInTheDocument();
 
     rerender(
       <ErrorBoundary resetKey="a">
         <div data-testid="child">OK</div>
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(screen.queryByTestId("child")).not.toBeInTheDocument();
     expect(screen.getByText(/boom/)).toBeInTheDocument();
@@ -103,7 +103,7 @@ describe("ErrorBoundary", () => {
     const { rerender } = render(
       <ErrorBoundary resetKey="1" errorHandler={errorHandler}>
         <ThrowingComponent message="error 1" />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(errorHandler).toHaveBeenCalledTimes(1);
     expect(errorHandler.mock.calls[0][0].message).toBe("error 1");
@@ -111,7 +111,7 @@ describe("ErrorBoundary", () => {
     rerender(
       <ErrorBoundary resetKey="2" errorHandler={errorHandler}>
         <ThrowingComponent message="error 2" />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(errorHandler).toHaveBeenCalledTimes(2);
     expect(errorHandler.mock.calls[1][0].message).toBe("error 2");

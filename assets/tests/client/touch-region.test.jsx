@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, act, fireEvent, cleanup, within } from "@testing-library/react";
+import {
+  render,
+  act,
+  fireEvent,
+  cleanup,
+  within,
+} from "@testing-library/react";
 import TouchRegion from "../../client/components/touch-region.jsx";
 
 vi.mock("../../client/core/logger.js", () => ({
@@ -91,7 +97,9 @@ describe("TouchRegion", () => {
     const { unmount } = render(<TouchRegion region={region} />);
     unmount();
 
-    expect(mockCallbacks.current.onRegionRemoved).toHaveBeenCalledWith("TOUCH01");
+    expect(mockCallbacks.current.onRegionRemoved).toHaveBeenCalledWith(
+      "TOUCH01",
+    );
   });
 
   it("renders buttons for each slide when regionSlides has data", () => {
@@ -145,7 +153,7 @@ describe("TouchRegion", () => {
     });
 
     expect(
-      within(container).queryByTestId("slide-EXE-1")
+      within(container).queryByTestId("slide-EXE-1"),
     ).not.toBeInTheDocument();
   });
 
@@ -167,14 +175,18 @@ describe("TouchRegion", () => {
     const { container } = render(<TouchRegion region={region} />);
 
     expect(within(container).getByText("Valid Slide")).toBeInTheDocument();
-    expect(within(container).queryByText("Invalid Slide")).not.toBeInTheDocument();
+    expect(
+      within(container).queryByText("Invalid Slide"),
+    ).not.toBeInTheDocument();
   });
 
   it("opens slide when Enter is pressed on a button", () => {
     const { container } = renderWithSlides();
 
     act(() => {
-      fireEvent.keyDown(within(container).getByText("Slide 1"), { key: "Enter" });
+      fireEvent.keyDown(within(container).getByText("Slide 1"), {
+        key: "Enter",
+      });
     });
 
     expect(within(container).getByTestId("slide-EXE-1")).toBeInTheDocument();
@@ -189,5 +201,4 @@ describe("TouchRegion", () => {
 
     expect(within(container).getByTestId("slide-EXE-1")).toBeInTheDocument();
   });
-
 });

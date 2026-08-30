@@ -21,7 +21,8 @@ vi.mock("../../client/assets/icon-pointer.svg", () => ({
 }));
 
 vi.mock("../../shared/grid-generator/grid-generator", () => ({
-  createGrid: (cols, rows) => `"${"a ".repeat(cols).trim()}"${" ".repeat(rows)}`,
+  createGrid: (cols, rows) =>
+    `"${"a ".repeat(cols).trim()}"${" ".repeat(rows)}`,
   createGridArea: (gridArea) => gridArea.join(" / "),
 }));
 
@@ -154,12 +155,16 @@ describe("Screen", () => {
     // After config loads, color scheme class should be set.
     expect(
       document.documentElement.classList.contains("color-scheme-dark") ||
-      document.documentElement.classList.contains("color-scheme-light"),
+        document.documentElement.classList.contains("color-scheme-light"),
     ).toBe(true);
 
     unmountFn();
 
-    expect(document.documentElement.classList.contains("color-scheme-dark")).toBe(false);
-    expect(document.documentElement.classList.contains("color-scheme-light")).toBe(false);
+    expect(
+      document.documentElement.classList.contains("color-scheme-dark"),
+    ).toBe(false);
+    expect(
+      document.documentElement.classList.contains("color-scheme-light"),
+    ).toBe(false);
   });
 });

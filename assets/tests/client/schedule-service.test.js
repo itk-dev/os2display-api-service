@@ -138,14 +138,8 @@ describe("ScheduleService", () => {
       const slides = [makeSlide("A")];
       const playlists = [makePlaylist("P1", slides)];
 
-      const result1 = ScheduleService.findScheduledSlides(
-        playlists,
-        "region1"
-      );
-      const result2 = ScheduleService.findScheduledSlides(
-        playlists,
-        "region2"
-      );
+      const result1 = ScheduleService.findScheduledSlides(playlists, "region1");
+      const result2 = ScheduleService.findScheduledSlides(playlists, "region2");
       expect(result1[0].executionId).not.toBe(result2[0].executionId);
     });
 
@@ -193,7 +187,10 @@ describe("ScheduleService", () => {
       const slides = [{ "@id": "/v2/slides/A" }];
       service.sendSlides("region1", slides);
 
-      expect(callbacks.current.updateRegionSlides).toHaveBeenCalledWith("region1", slides);
+      expect(callbacks.current.updateRegionSlides).toHaveBeenCalledWith(
+        "region1",
+        slides,
+      );
     });
 
     it("checkForEmptyContent calls setIsContentEmpty(true) when no regions have slides", () => {

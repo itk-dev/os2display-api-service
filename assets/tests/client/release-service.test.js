@@ -79,7 +79,9 @@ describe("ReleaseService", () => {
         releaseVersion: "1.0",
       });
 
-      await expect(releaseService.checkForNewRelease()).resolves.toBeUndefined();
+      await expect(
+        releaseService.checkForNewRelease(),
+      ).resolves.toBeUndefined();
       expect(mockReplace).not.toHaveBeenCalled();
     });
 
@@ -89,9 +91,7 @@ describe("ReleaseService", () => {
         releaseVersion: "2.0",
       });
 
-      await expect(
-        releaseService.checkForNewRelease()
-      ).rejects.toBeUndefined();
+      await expect(releaseService.checkForNewRelease()).rejects.toBeUndefined();
 
       expect(mockReplace).toHaveBeenCalledTimes(1);
       const redirectUrl = mockReplace.mock.calls[0][0].toString();
@@ -127,7 +127,7 @@ describe("ReleaseService", () => {
       await releaseService.checkForNewRelease();
 
       expect(statusService.setError).toHaveBeenCalledWith(
-        constants.ERROR_RELEASE_FILE_NOT_LOADED
+        constants.ERROR_RELEASE_FILE_NOT_LOADED,
       );
     });
 
@@ -147,18 +147,18 @@ describe("ReleaseService", () => {
     it("resolves when loadRelease fails", async () => {
       mockLoadRelease.mockRejectedValue(new Error("Network"));
 
-      await expect(releaseService.checkForNewRelease()).resolves.toBeUndefined();
+      await expect(
+        releaseService.checkForNewRelease(),
+      ).resolves.toBeUndefined();
       expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to load release")
+        expect.stringContaining("Failed to load release"),
       );
     });
   });
 
   describe("setScreenIdInUrl", () => {
     it("sets screenId in URL search params", () => {
-      releaseService.setScreenIdInUrl(
-        "/v2/screens/SCREEN0001AAAAAAAAAAAAAAAA"
-      );
+      releaseService.setScreenIdInUrl("/v2/screens/SCREEN0001AAAAAAAAAAAAAAAA");
 
       expect(mockReplaceState).toHaveBeenCalled();
       const url = mockReplaceState.mock.calls[0][2].toString();

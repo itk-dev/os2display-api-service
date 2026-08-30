@@ -94,7 +94,8 @@ class ScheduleService {
 
     if (!Object.prototype.hasOwnProperty.call(intervals, regionId)) {
       ClientConfigLoader.loadConfig().then((config) => {
-        const schedulingInterval = config?.schedulingInterval ?? defaults.schedulingIntervalDefault;
+        const schedulingInterval =
+          config?.schedulingInterval ?? defaults.schedulingIntervalDefault;
 
         // Extra check because of async — region may have been removed.
         if (
@@ -220,7 +221,9 @@ class ScheduleService {
           }
 
           // Execution id is the product of region, playlist and slide id, to ensure uniqueness in the client.
-          const executionId = Md5(regionId + playlist["@id"] + slide["@id"]).toString();
+          const executionId = Md5(
+            regionId + playlist["@id"] + slide["@id"],
+          ).toString();
           slides.push({ ...slide, executionId: `EXE-ID-${executionId}` });
         });
       } else {

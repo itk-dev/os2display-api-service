@@ -47,7 +47,7 @@ describe("ClientConfigLoader", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         json: () => Promise.resolve(mockConfig),
-      })
+      }),
     );
 
     const config = await ClientConfigLoader.loadConfig();
@@ -60,7 +60,7 @@ describe("ClientConfigLoader", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         json: () => Promise.resolve(mockConfig),
-      })
+      }),
     );
 
     await ClientConfigLoader.loadConfig();

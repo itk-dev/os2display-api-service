@@ -40,7 +40,6 @@ function TouchRegion({ region }) {
   const slideDone = (slide) => {
     setDisplayClose(false);
     setCurrentSlide(null);
-
   };
 
   /**
@@ -120,7 +119,10 @@ function TouchRegion({ region }) {
                     <div
                       className="touch-button-close"
                       onClick={() => slideDone(currentSlide)}
-                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") slideDone(currentSlide); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ")
+                          slideDone(currentSlide);
+                      }}
                       role="button"
                       tabIndex={0}
                     >
@@ -141,7 +143,9 @@ function TouchRegion({ region }) {
                   className="touch-button"
                   key={`button-${slide.executionId}`}
                   onClick={() => startSlide(slide)}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") startSlide(slide); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") startSlide(slide);
+                  }}
                   role="button"
                   tabIndex={0}
                 >

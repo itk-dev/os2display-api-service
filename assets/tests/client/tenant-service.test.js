@@ -81,7 +81,7 @@ describe("TenantService", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(appStorage.setFallbackImageUrl).toHaveBeenCalledWith(
-      "https://example.com/bg.png"
+      "https://example.com/bg.png",
     );
   });
 
@@ -146,7 +146,7 @@ describe("TenantService", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(logger.error).toHaveBeenCalledWith(
-      expect.stringContaining("Failed to load tenant config")
+      expect.stringContaining("Failed to load tenant config"),
     );
     expect(unsubscribe).toHaveBeenCalled();
   });

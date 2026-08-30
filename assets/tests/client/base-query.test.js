@@ -121,9 +121,7 @@ describe("clientBaseQuery", () => {
       await clientBaseQuery({ url: "/test" }, api, extraOptions);
 
       const passedArgs = mockRawBaseQuery.mock.calls[0][0];
-      expect(
-        passedArgs.headers["Authorization-Tenant-Key"],
-      ).toBeUndefined();
+      expect(passedArgs.headers["Authorization-Tenant-Key"]).toBeUndefined();
     });
   });
 

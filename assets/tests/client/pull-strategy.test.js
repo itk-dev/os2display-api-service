@@ -68,9 +68,7 @@ function makeScreen(overrides = {}) {
   return {
     "@id": SCREEN_PATH,
     layout: `/v2/layouts/${LAYOUT_ID}`,
-    regions: [
-      `/v2/screens/${SCREEN_ID}/regions/${REGION_ID}/playlists`,
-    ],
+    regions: [`/v2/screens/${SCREEN_ID}/regions/${REGION_ID}/playlists`],
     relationsChecksum: {
       campaigns: "aaa",
       inScreenGroups: "bbb",
@@ -99,9 +97,7 @@ function makeLayout() {
   return {
     "@id": `/v2/layouts/${LAYOUT_ID}`,
     grid: { rows: 1, columns: 1 },
-    regions: [
-      { "@id": `/v2/layouts/regions/${REGION_ID}`, gridArea: ["a"] },
-    ],
+    regions: [{ "@id": `/v2/layouts/regions/${REGION_ID}`, gridArea: ["a"] }],
   };
 }
 
@@ -191,10 +187,13 @@ describe("PullStrategy.getScreen", () => {
     });
 
     contentCapture = captureContentCallback();
-    strategy = new PullStrategy({
-      entryPoint: SCREEN_PATH,
-      interval: 60000,
-    }, contentCapture.callback);
+    strategy = new PullStrategy(
+      {
+        entryPoint: SCREEN_PATH,
+        interval: 60000,
+      },
+      contentCapture.callback,
+    );
   });
 
   afterEach(() => {
@@ -252,9 +251,7 @@ describe("PullStrategy.getScreen", () => {
       const { screen } = contentCapture;
       expect(screen.hasActiveCampaign).toBe(true);
       expect(screen.layoutData.grid).toEqual({ rows: 1, columns: 1 });
-      expect(screen.layoutData.regions[0]["@id"]).toContain(
-        CAMPAIGN_REGION_ID,
-      );
+      expect(screen.layoutData.regions[0]["@id"]).toContain(CAMPAIGN_REGION_ID);
     });
 
     it("falls through to normal path when campaign is expired", async () => {
@@ -347,8 +344,7 @@ describe("PullStrategy.getScreen", () => {
 
     it("marks slide as invalid when template fetch fails", async () => {
       setupBasicResponses({
-        getV2TemplatesById: () =>
-          Promise.reject(new Error("Template error")),
+        getV2TemplatesById: () => Promise.reject(new Error("Template error")),
       });
 
       await strategy.getScreen(SCREEN_PATH);

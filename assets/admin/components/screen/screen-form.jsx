@@ -11,10 +11,7 @@ import SelectGroupsTable from "../util/multi-and-table/select-groups-table";
 import GridGenerationAndSelect from "./util/grid-generation-and-select";
 import MultiSelectComponent from "../util/forms/multiselect-dropdown/multi-dropdown";
 import idFromUrl from "../util/helpers/id-from-url";
-import {
-  useGetV2LayoutsQuery,
-  enhancedApi,
-} from "../../redux/enhanced-api.ts";
+import { useGetV2LayoutsQuery, enhancedApi } from "../../redux/enhanced-api.ts";
 import FormCheckbox from "../util/forms/form-checkbox";
 import Preview from "../preview/preview";
 import StickyFooter from "../util/sticky-footer";

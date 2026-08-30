@@ -124,7 +124,7 @@ describe("TokenService", () => {
       appStorage.getToken.mockReturnValue("token");
 
       expect(tokenService.getExpireState()).toBe(
-        constants.TOKEN_VALID_SHOULD_HAVE_BEEN_REFRESHED
+        constants.TOKEN_VALID_SHOULD_HAVE_BEEN_REFRESHED,
       );
     });
 
@@ -156,7 +156,7 @@ describe("TokenService", () => {
       tokenService.ensureFreshToken();
 
       expect(statusService.setError).toHaveBeenCalledWith(
-        constants.ERROR_TOKEN_EXP_IAT_NOT_SET
+        constants.ERROR_TOKEN_EXP_IAT_NOT_SET,
       );
     });
 
@@ -168,7 +168,7 @@ describe("TokenService", () => {
       tokenService.ensureFreshToken();
 
       expect(statusService.setError).toHaveBeenCalledWith(
-        constants.ERROR_TOKEN_EXP_IAT_NOT_SET
+        constants.ERROR_TOKEN_EXP_IAT_NOT_SET,
       );
     });
 
@@ -209,7 +209,7 @@ describe("TokenService", () => {
       tokenService.checkToken();
 
       expect(statusService.setError).toHaveBeenCalledWith(
-        constants.ERROR_TOKEN_EXPIRED
+        constants.ERROR_TOKEN_EXPIRED,
       );
     });
 
@@ -222,7 +222,7 @@ describe("TokenService", () => {
       tokenService.checkToken();
 
       expect(statusService.setError).toHaveBeenCalledWith(
-        constants.ERROR_TOKEN_VALID_SHOULD_HAVE_BEEN_REFRESHED
+        constants.ERROR_TOKEN_VALID_SHOULD_HAVE_BEEN_REFRESHED,
       );
     });
 
@@ -270,7 +270,7 @@ describe("TokenService", () => {
       expect(appStorage.setScreenId).toHaveBeenCalledWith("screen-1");
       expect(appStorage.setTenant).toHaveBeenCalledWith(
         "tenant-key",
-        "tenant-id"
+        "tenant-id",
       );
       expect(result).toEqual({
         status: constants.LOGIN_STATUS_READY,

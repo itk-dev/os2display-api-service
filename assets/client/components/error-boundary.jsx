@@ -16,7 +16,11 @@ class ErrorBoundary extends Component {
 
   componentDidUpdate(prevProps) {
     if (this.props.resetKey !== prevProps.resetKey && this.state.hasError) {
-      this.setState({ hasError: false, errorMessage: null, errorStackTrace: null });
+      this.setState({
+        hasError: false,
+        errorMessage: null,
+        errorStackTrace: null,
+      });
     }
   }
 

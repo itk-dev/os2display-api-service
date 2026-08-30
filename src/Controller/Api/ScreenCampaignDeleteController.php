@@ -7,6 +7,7 @@ namespace App\Controller\Api;
 use App\Repository\ScreenCampaignRepository;
 use App\Utils\ValidationUtils;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 
 #[AsController]
@@ -24,6 +25,6 @@ class ScreenCampaignDeleteController extends AbstractTenantAwareController
 
         $this->screenCampaignRepository->deleteRelations($ulid, $campaignUlid, $this->getActiveTenant());
 
-        return new JsonResponse(null, \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT);
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 }

@@ -7,8 +7,9 @@
 # Ignore the public/fixtures folder.
 /public/fixtures
 
-# Ignore release json file.
+# Ignore release json file (and its deprecated copy for the 2.x client upgrade path).
 /public/release.json
+/public/client/release.json
 
 ###> symfony/framework-bundle ###
 /.env.local
@@ -24,8 +25,6 @@
 /.php-cs-fixer.php
 /.php-cs-fixer.cache
 ###< friendsofphp/php-cs-fixer ###
-
-node_modules
 
 public/media/*
 !public/media/thumbnail_video.png
@@ -61,10 +60,24 @@ phpstan.neon
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+/.playwright-mcp/
 #< Playwright
 
 ###> vincentlanglet/twig-cs-fixer ###
 /.twig-cs-fixer.cache
 ###< vincentlanglet/twig-cs-fixer ###
 
-.claude/
+###> anthropic/claude-code ###
+.claude/*
+!.claude/settings.json
+!.claude/agents/
+!.claude/commands/
+!.claude/skills/
+###< anthropic/claude-code ###
+
+# `mate discover` (symfony/ai-mate >= 0.10) symlinks packaged skills out of vendor/
+# into .agents/skills/ and .claude/skills/. The link targets live in vendor/, so the
+# symlinks are generated state that breaks for anyone who has not run `composer
+# install` — regenerate them with `vendor/bin/mate discover` instead of committing.
+/.agents/
+/.claude/skills/mate-*

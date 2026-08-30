@@ -14,19 +14,28 @@ describe("isPublished", () => {
   describe("both from and to set", () => {
     it("returns true when current time is within window", () => {
       expect(
-        isPublished({ from: "2025-06-15T10:00:00Z", to: "2025-06-15T14:00:00Z" })
+        isPublished({
+          from: "2025-06-15T10:00:00Z",
+          to: "2025-06-15T14:00:00Z",
+        }),
       ).toBe(true);
     });
 
     it("returns false when current time is before from", () => {
       expect(
-        isPublished({ from: "2025-06-15T13:00:00Z", to: "2025-06-15T14:00:00Z" })
+        isPublished({
+          from: "2025-06-15T13:00:00Z",
+          to: "2025-06-15T14:00:00Z",
+        }),
       ).toBe(false);
     });
 
     it("returns false when current time is after to", () => {
       expect(
-        isPublished({ from: "2025-06-15T08:00:00Z", to: "2025-06-15T10:00:00Z" })
+        isPublished({
+          from: "2025-06-15T08:00:00Z",
+          to: "2025-06-15T10:00:00Z",
+        }),
       ).toBe(false);
     });
   });

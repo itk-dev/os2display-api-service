@@ -8,8 +8,7 @@ import constants from "../util/constants.js";
 import defaults from "../util/defaults.js";
 
 // Regex to extract regionId from region playlist paths.
-const REGION_PATH_REGEX =
-  /\/v2\/screens\/([^/]+)\/regions\/([^/]+)\/playlists/;
+const REGION_PATH_REGEX = /\/v2\/screens\/([^/]+)\/regions\/([^/]+)\/playlists/;
 
 /**
  * Check if any of the given checksum fields have changed.
@@ -84,9 +83,13 @@ class PullStrategy {
     }
 
     try {
-      const response = await queryAllPages("getV2ScreensByIdScreenGroups", {
-        id: screenId,
-      }, forceRefetch);
+      const response = await queryAllPages(
+        "getV2ScreensByIdScreenGroups",
+        {
+          id: screenId,
+        },
+        forceRefetch,
+      );
 
       const promises = [];
 
@@ -94,7 +97,11 @@ class PullStrategy {
         const groupId = idFromPath(group["@id"]);
         if (!groupId) return;
         promises.push(
-          queryAllPages("getV2ScreenGroupsByIdCampaigns", { id: groupId }, forceRefetch),
+          queryAllPages(
+            "getV2ScreenGroupsByIdCampaigns",
+            { id: groupId },
+            forceRefetch,
+          ),
         );
       });
 
@@ -105,7 +112,9 @@ class PullStrategy {
             screenGroupCampaigns.push(campaign);
           });
         } else {
-          logger.warn(`Failed to fetch screen group campaigns: ${result.reason}`);
+          logger.warn(
+            `Failed to fetch screen group campaigns: ${result.reason}`,
+          );
         }
       });
     } catch (err) {
@@ -121,9 +130,7 @@ class PullStrategy {
         forceRefetch,
       );
 
-      screenCampaigns = screenCampaignsResults.map(
-        ({ campaign }) => campaign,
-      );
+      screenCampaigns = screenCampaignsResults.map(({ campaign }) => campaign);
     } catch (err) {
       logger.error(err);
     }
@@ -153,10 +160,14 @@ class PullStrategy {
       const matches = regionPath.match(REGION_PATH_REGEX);
       if (matches) {
         promises.push(
-          queryAllPages("getV2ScreensByIdRegionsAndRegionIdPlaylists", {
-            id: matches[1],
-            regionId: matches[2],
-          }, forceRefetch).then((results) => ({
+          queryAllPages(
+            "getV2ScreensByIdRegionsAndRegionIdPlaylists",
+            {
+              id: matches[1],
+              regionId: matches[2],
+            },
+            forceRefetch,
+          ).then((results) => ({
             regionId: matches[2],
             results,
           })),
@@ -199,9 +210,13 @@ class PullStrategy {
         );
         if (!playlistId) continue;
         promises.push(
-          queryAllPages("getV2PlaylistsByIdSlides", {
-            id: playlistId,
-          }, forceRefetch).then((results) => ({
+          queryAllPages(
+            "getV2PlaylistsByIdSlides",
+            {
+              id: playlistId,
+            },
+            forceRefetch,
+          ).then((results) => ({
             regionKey,
             playlistKey,
             results,
@@ -236,15 +251,21 @@ class PullStrategy {
 
     const screenId = idFromPath(screenPath);
     if (!screenId) {
-      logger.warn(`Could not extract screen ID from ${screenPath}. Aborting content update.`);
+      logger.warn(
+        `Could not extract screen ID from ${screenPath}. Aborting content update.`,
+      );
       return;
     }
 
     // Always forceRefetch the screen to get fresh checksums.
     try {
-      screen = await query("getV2ScreensById", {
-        id: screenId,
-      }, true);
+      screen = await query(
+        "getV2ScreensById",
+        {
+          id: screenId,
+        },
+        true,
+      );
     } catch (err) {
       logger.warn(
         `Screen (${screenPath}) not loaded. Aborting content update.`,
@@ -274,14 +295,19 @@ class PullStrategy {
 
     // Determine which resources need fresh data based on checksum changes.
     const campaignsChanged = checksumChanged(
-      relationChecksumEnabled, this.previousScreenChecksums, newScreenChecksums,
+      relationChecksumEnabled,
+      this.previousScreenChecksums,
+      newScreenChecksums,
       ["campaigns", "inScreenGroups"],
     );
 
     if (campaignsChanged) {
       logger.info(`Fetching campaigns.`);
     }
-    newScreen.campaignsData = await this.getCampaignsData(newScreen, campaignsChanged);
+    newScreen.campaignsData = await this.getCampaignsData(
+      newScreen,
+      campaignsChanged,
+    );
     if (this.stopped) return;
 
     if (newScreen.campaignsData.length > 0) {
@@ -298,14 +324,17 @@ class PullStrategy {
       await this.buildCampaignLayout(newScreen, forceRefetch);
     } else {
       const success = await this.fetchLayoutAndRegions(
-        newScreen, newScreenChecksums, relationChecksumEnabled,
+        newScreen,
+        newScreenChecksums,
+        relationChecksumEnabled,
       );
       if (!success) return;
     }
     if (this.stopped) return;
 
     const nextSlideChecksums = await this.enrichSlides(
-      newScreen.regionData, relationChecksumEnabled,
+      newScreen.regionData,
+      relationChecksumEnabled,
     );
     if (this.stopped) return;
 
@@ -345,7 +374,9 @@ class PullStrategy {
     screen.regionData[campaignRegionId] = screen.campaignsData;
     const campaignScreenId = idFromPath(screen["@id"]);
     if (!campaignScreenId) {
-      logger.warn(`Could not extract screen ID from ${screen["@id"]} for campaign layout.`);
+      logger.warn(
+        `Could not extract screen ID from ${screen["@id"]} for campaign layout.`,
+      );
       return;
     }
     screen.regions = [
@@ -365,13 +396,19 @@ class PullStrategy {
    * @param {boolean} relationChecksumEnabled Whether checksum comparison is enabled.
    * @returns {Promise<boolean>} False if content update should be aborted.
    */
-  async fetchLayoutAndRegions(screen, newScreenChecksums, relationChecksumEnabled) {
+  async fetchLayoutAndRegions(
+    screen,
+    newScreenChecksums,
+    relationChecksumEnabled,
+  ) {
     logger.info(`Has no active campaign.`);
 
     const layoutChanged =
       this.previousHadActiveCampaign ||
       checksumChanged(
-        relationChecksumEnabled, this.previousScreenChecksums, newScreenChecksums,
+        relationChecksumEnabled,
+        this.previousScreenChecksums,
+        newScreenChecksums,
         ["layout"],
       );
 
@@ -381,14 +418,20 @@ class PullStrategy {
 
     const layoutId = idFromPath(screen.layout);
     if (!layoutId) {
-      logger.warn(`Could not extract layout ID from ${screen.layout}. Aborting content update.`);
+      logger.warn(
+        `Could not extract layout ID from ${screen.layout}. Aborting content update.`,
+      );
       return false;
     }
 
     try {
-      screen.layoutData = await query("getV2LayoutsById", {
-        id: layoutId,
-      }, layoutChanged);
+      screen.layoutData = await query(
+        "getV2LayoutsById",
+        {
+          id: layoutId,
+        },
+        layoutChanged,
+      );
     } catch (err) {
       logger.warn(
         `Layout (${screen.layout}) not loaded. Aborting content update.`,
@@ -406,7 +449,9 @@ class PullStrategy {
     const regionsChanged =
       this.previousHadActiveCampaign ||
       checksumChanged(
-        relationChecksumEnabled, this.previousScreenChecksums, newScreenChecksums,
+        relationChecksumEnabled,
+        this.previousScreenChecksums,
+        newScreenChecksums,
         ["regions"],
       );
 
@@ -486,14 +531,18 @@ class PullStrategy {
 
     // Fetch template if it has changed.
     const templateChanged = checksumChanged(
-      relationChecksumEnabled, oldSlideChecksums, newSlideChecksums,
+      relationChecksumEnabled,
+      oldSlideChecksums,
+      newSlideChecksums,
       ["templateInfo"],
     );
 
     const templateId = idFromPath(slide.templateInfo["@id"]);
 
     if (!templateId) {
-      logger.warn(`Could not extract template ID from ${slide.templateInfo["@id"]}. Marking slide as invalid.`);
+      logger.warn(
+        `Could not extract template ID from ${slide.templateInfo["@id"]}. Marking slide as invalid.`,
+      );
       slide.templateData = null;
       slide.invalid = true;
       slide.mediaData = {};
@@ -506,9 +555,13 @@ class PullStrategy {
     }
 
     try {
-      slide.templateData = await query("getV2TemplatesById", {
-        id: templateId,
-      }, templateChanged);
+      slide.templateData = await query(
+        "getV2TemplatesById",
+        {
+          id: templateId,
+        },
+        templateChanged,
+      );
     } catch (err) {
       slide.templateData = null;
     }
@@ -522,7 +575,9 @@ class PullStrategy {
 
     // Fetch media if it has changed.
     const mediaChanged = checksumChanged(
-      relationChecksumEnabled, oldSlideChecksums, newSlideChecksums,
+      relationChecksumEnabled,
+      oldSlideChecksums,
+      newSlideChecksums,
       ["media"],
     );
 
@@ -556,9 +611,13 @@ class PullStrategy {
       if (!feedId) return;
       logger.info(`Fetching feed data.`);
       try {
-        slide.feedData = await query("getV2FeedsByIdData", {
-          id: feedId,
-        }, true);
+        slide.feedData = await query(
+          "getV2FeedsByIdData",
+          {
+            id: feedId,
+          },
+          true,
+        );
       } catch (err) {
         slide.feedData = null;
       }

@@ -5,7 +5,6 @@ import reauthenticateRef from "./reauthenticate-ref";
 const rawBaseQuery = fetchBaseQuery({ baseUrl: "/", credentials: "include" });
 
 const clientBaseQuery = async (args, api, extraOptions) => {
-
   const newArgs = { ...args };
 
   if (!Object.prototype.hasOwnProperty.call(newArgs, "headers")) {

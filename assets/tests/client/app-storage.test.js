@@ -102,7 +102,7 @@ describe("AppStorage", () => {
     it("round-trips set and get", () => {
       appStorage.setFallbackImageUrl("https://example.com/img.png");
       expect(appStorage.getFallbackImageUrl()).toBe(
-        "https://example.com/img.png"
+        "https://example.com/img.png",
       );
     });
 

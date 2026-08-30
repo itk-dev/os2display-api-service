@@ -17,7 +17,8 @@ class ReleaseService {
       const url = new URL(window.location.href);
       const currentTimestamp = url.searchParams.get("releaseTimestamp");
 
-      releaseLoader.loadRelease()
+      releaseLoader
+        .loadRelease()
         .then((release) => {
           if (release.releaseTimestamp === null) {
             statusService.setError(constants.ERROR_RELEASE_FILE_NOT_LOADED);

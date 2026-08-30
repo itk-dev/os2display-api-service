@@ -41,43 +41,62 @@ export function query(endpoint, args, forceRefetch = false) {
     });
 }
 
+// Backstop so a misbehaving collection cannot page indefinitely. Matches the
+// limit used by the admin's get-all-pages helper.
+const MAX_PAGES = 100;
+
 /**
  * Fetch all pages from a paginated endpoint.
+ *
+ * Pages by following `hydra:view['hydra:next']`, the same termination the admin
+ * uses in components/util/helpers/get-all-pages.js. A missing `hydra:next`
+ * always means there is nothing more to fetch: API Platform omits it on the last
+ * page, on out-of-range pages, and on single-page collections. Deciding from the
+ * links rather than comparing the collected count against `hydra:totalItems`
+ * means a count that disagrees with the rows actually returned can no longer
+ * produce an endless run of requests (issue #517).
+ *
+ * A page that fails gives up the whole collection by rejecting, so a caller can
+ * never mistake a truncated result for a complete one.
  *
  * @param {string} endpoint The endpoint name.
  * @param {object} args The endpoint args (page will be added).
  * @param {boolean} forceRefetch Whether to bypass RTK Query cache.
  * @returns {Promise<Array>} All hydra:member results concatenated.
  */
-// Upper bound on pagination — intentionally capped. Content types served to
-// screens should never exceed this number of pages.
-const MAX_PAGES = 50;
-
 export async function queryAllPages(endpoint, args, forceRefetch = false) {
   let results = [];
   let page = 1;
 
   do {
+    let responseData;
+
     try {
-      const responseData = await query(endpoint, { ...args, page }, forceRefetch);
-
-      if (responseData === null || responseData === undefined) {
-        logger.error(`Failed to fetch page ${page} for ${endpoint}`);
-        return results;
-      }
-
-      results = results.concat(responseData["hydra:member"] ?? []);
-
-      if (responseData["hydra:view"]?.["hydra:next"]) {
-        page += 1;
-      } else {
-        break;
-      }
+      responseData = await query(endpoint, { ...args, page }, forceRefetch);
     } catch (err) {
-      logger.error(
-        `Failed to fetch all pages for ${endpoint}: ${err.message}`,
-      );
-      return results;
+      logger.error(`Failed to fetch all pages for ${endpoint}: ${err.message}`);
+      throw err;
+    }
+
+    if (responseData === null || responseData === undefined) {
+      logger.error(`Failed to fetch page ${page} for ${endpoint}`);
+      throw new Error(`Failed to fetch page ${page} for ${endpoint}`);
+    }
+
+    const members = responseData["hydra:member"] ?? [];
+
+    // An empty page also stops us, so a collection that offers a next link
+    // without delivering members cannot keep the loop alive.
+    if (members.length === 0) {
+      break;
+    }
+
+    results = results.concat(members);
+
+    if (responseData["hydra:view"]?.["hydra:next"]) {
+      page += 1;
+    } else {
+      break;
     }
   } while (page <= MAX_PAGES);
 

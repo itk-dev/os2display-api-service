@@ -82,14 +82,20 @@ async function setupClientRoutes(page, configOverride = null) {
   );
 
   // Playlist 1 slides.
-  await page.route(`**/v2/playlists/${PLAYLIST_1_ID}/slides*`, async (route) => {
-    await route.fulfill({ json: playlist1SlidesJson });
-  });
+  await page.route(
+    `**/v2/playlists/${PLAYLIST_1_ID}/slides*`,
+    async (route) => {
+      await route.fulfill({ json: playlist1SlidesJson });
+    },
+  );
 
   // Playlist 2 slides.
-  await page.route(`**/v2/playlists/${PLAYLIST_2_ID}/slides*`, async (route) => {
-    await route.fulfill({ json: playlist2SlidesJson });
-  });
+  await page.route(
+    `**/v2/playlists/${PLAYLIST_2_ID}/slides*`,
+    async (route) => {
+      await route.fulfill({ json: playlist2SlidesJson });
+    },
+  );
 
   // Template.
   await page.route(`**/v2/templates/${TEMPLATE_ID}`, async (route) => {
@@ -183,7 +189,10 @@ test.describe("Client E2E: login, playlists, slide progression", () => {
     );
 
     // Capture initial data-run.
-    const initialRun = await page.locator(".slide").first().getAttribute("data-run");
+    const initialRun = await page
+      .locator(".slide")
+      .first()
+      .getAttribute("data-run");
 
     // Wait for data-run to change (proves slideDone was called).
     await page.waitForFunction(

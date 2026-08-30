@@ -109,9 +109,7 @@ vi.mock("../../client/assets/fallback.png", () => ({
   default: "fallback.png",
 }));
 vi.mock("../../client/components/screen.jsx", () => ({
-  default: ({ screen }) => (
-    <div data-testid="screen">{screen["@id"]}</div>
-  ),
+  default: ({ screen }) => <div data-testid="screen">{screen["@id"]}</div>,
 }));
 vi.mock("../../client/components/screen.scss", () => ({}));
 vi.mock("../../client/service/content-service", () => ({
@@ -148,6 +146,7 @@ vi.mock("../../client/util/constants", () => {
   const c = {
     LOGIN_STATUS_READY: "ready",
     LOGIN_STATUS_AWAITING_BIND_KEY: "awaitingBindKey",
+    LOGIN_STATUS_UNKNOWN: "unknown",
     STATUS_RUNNING: "running",
     STATUS_LOGIN: "login",
     ERROR_TOKEN_REFRESH_FAILED: "ER101",
@@ -184,7 +183,10 @@ describe("App", () => {
     mockAppStorage.getToken.mockReturnValue(null);
     mockAppStorage.getScreenId.mockReturnValue(null);
     mockAppStorage.getFallbackImageUrl.mockReturnValue(null);
-    mockTokenService.checkLogin.mockResolvedValue({ status: "ready", screenId: "S1" });
+    mockTokenService.checkLogin.mockResolvedValue({
+      status: "ready",
+      screenId: "S1",
+    });
     mockTokenService.refreshToken.mockResolvedValue();
     mockReleaseService.checkForNewRelease.mockResolvedValue();
     mockConfigLoader.loadConfig.mockResolvedValue({ debug: false });
@@ -228,10 +230,7 @@ describe("App", () => {
         render(<App preview="screen" previewId="S1" />);
       });
 
-      expect(addSpy).not.toHaveBeenCalledWith(
-        "keydown",
-        expect.any(Function),
-      );
+      expect(addSpy).not.toHaveBeenCalledWith("keydown", expect.any(Function));
     });
   });
 
@@ -338,6 +337,126 @@ describe("App", () => {
     });
   });
 
+  describe("retrieving bind key spinner", () => {
+    // The spinner tells an unattended screen that it is still trying to log in.
+    // It must stay up for as long as no bind key has arrived, including while
+    // checkLogin keeps returning unknown or failing outright.
+    const spinner = (container) =>
+      container.querySelector(".retrieving-bind-key-spinner");
+
+    it("should keep polling and keep the spinner up on unknown status", async () => {
+      mockConfigLoader.loadConfig.mockResolvedValue({
+        debug: false,
+        loginCheckTimeout: 50,
+      });
+      mockTokenService.checkLogin
+        .mockResolvedValueOnce({ status: "unknown" })
+        .mockResolvedValue({
+          status: "awaitingBindKey",
+          bindKey: "BIND42",
+        });
+
+      let result;
+      await act(async () => {
+        result = render(<App preview={null} previewId={null} />);
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      // Unknown status: no bind key yet, so we are still retrieving.
+      expect(result.container.querySelector(".bind-key")).toBeNull();
+      expect(spinner(result.container)).not.toBeNull();
+
+      // Advance past loginCheckTimeout so the retry fires.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60);
+      });
+
+      expect(result.container.querySelector(".bind-key").textContent).toBe(
+        "BIND42",
+      );
+      expect(spinner(result.container)).toBeNull();
+    });
+
+    it("should keep the spinner up while checkLogin rejects", async () => {
+      mockConfigLoader.loadConfig.mockResolvedValue({
+        debug: false,
+        loginCheckTimeout: 50,
+      });
+      mockTokenService.checkLogin
+        .mockRejectedValueOnce(new Error("Network error"))
+        .mockResolvedValue({
+          status: "awaitingBindKey",
+          bindKey: "RETRY01",
+        });
+
+      let result;
+      await act(async () => {
+        result = render(<App preview={null} previewId={null} />);
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(spinner(result.container)).not.toBeNull();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60);
+      });
+
+      expect(spinner(result.container)).toBeNull();
+      expect(result.container.querySelector(".bind-key").textContent).toBe(
+        "RETRY01",
+      );
+    });
+
+    it("should show the spinner again after a failed reauthentication", async () => {
+      mockConfigLoader.loadConfig.mockResolvedValue({
+        debug: false,
+        loginCheckTimeout: 50,
+      });
+      mockTokenService.checkLogin
+        .mockResolvedValueOnce({
+          status: "awaitingBindKey",
+          bindKey: "INIT01",
+        })
+        .mockResolvedValue({
+          status: "awaitingBindKey",
+          bindKey: "REAUTH01",
+        });
+      mockTokenService.refreshToken.mockRejectedValue(new Error("expired"));
+
+      let result;
+      await act(async () => {
+        result = render(<App preview={null} previewId={null} />);
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(result.container.querySelector(".bind-key").textContent).toBe(
+        "INIT01",
+      );
+      expect(spinner(result.container)).toBeNull();
+
+      // A 401 from base-query drives reauthentication, which fails and forces a
+      // full re-login. The stale bind key must go with it.
+      await act(async () => {
+        mockReauthRef.current();
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(result.container.querySelector(".bind-key").textContent).toBe(
+        "REAUTH01",
+      );
+    });
+
+    it("should not show the spinner in preview mode", async () => {
+      let result;
+      await act(async () => {
+        result = render(<App preview="slide" previewId="SL_1" />);
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(spinner(result.container)).toBeNull();
+    });
+  });
+
   describe("keyboard handler", () => {
     it("should clear storage and reload on Ctrl+I", async () => {
       const reloadMock = vi.fn();
@@ -352,7 +471,11 @@ describe("App", () => {
         await vi.advanceTimersByTimeAsync(0);
       });
 
-      fireEvent.keyDown(document, { code: "KeyI", ctrlKey: true, repeat: false });
+      fireEvent.keyDown(document, {
+        code: "KeyI",
+        ctrlKey: true,
+        repeat: false,
+      });
 
       expect(mockAppStorage.clearAppStorage).toHaveBeenCalled();
       expect(reloadMock).toHaveBeenCalled();
@@ -373,7 +496,11 @@ describe("App", () => {
         await vi.advanceTimersByTimeAsync(0);
       });
 
-      fireEvent.keyDown(document, { code: "KeyI", ctrlKey: true, repeat: true });
+      fireEvent.keyDown(document, {
+        code: "KeyI",
+        ctrlKey: true,
+        repeat: true,
+      });
 
       expect(reloadMock).not.toHaveBeenCalled();
 

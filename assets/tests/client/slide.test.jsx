@@ -41,7 +41,7 @@ describe("Slide", () => {
         run="12345"
         slideDone={vi.fn()}
         slideError={vi.fn()}
-      />
+      />,
     );
 
     const el = container.querySelector("#slide-1");
@@ -59,7 +59,7 @@ describe("Slide", () => {
         run="12345"
         slideDone={slideDone}
         slideError={vi.fn()}
-      />
+      />,
     );
 
     expect(mockRenderSlide).toHaveBeenCalledWith(slide, "12345", slideDone);
@@ -73,7 +73,7 @@ describe("Slide", () => {
         run="12345"
         slideDone={vi.fn()}
         slideError={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getByTestId("rendered")).toBeInTheDocument();
@@ -97,7 +97,7 @@ describe("Slide", () => {
         run="12345"
         slideDone={vi.fn()}
         slideError={slideError}
-      />
+      />,
     );
 
     expect(slideError).not.toHaveBeenCalled();
@@ -108,7 +108,10 @@ describe("Slide", () => {
   });
 
   it("renders without crashing when slide has no executionId", () => {
-    const slideNoExecId = { "@id": "/v2/slides/TEST01234567890123456789", title: "No exec" };
+    const slideNoExecId = {
+      "@id": "/v2/slides/TEST01234567890123456789",
+      title: "No exec",
+    };
     const { container } = render(
       <Slide
         slide={slideNoExecId}
@@ -116,7 +119,7 @@ describe("Slide", () => {
         run="12345"
         slideDone={vi.fn()}
         slideError={vi.fn()}
-      />
+      />,
     );
 
     const el = container.querySelector("#slide-no-exec");
@@ -140,7 +143,7 @@ describe("Slide", () => {
         run="12345"
         slideDone={vi.fn()}
         slideError={slideError}
-      />
+      />,
     );
 
     unmount();
@@ -159,7 +162,7 @@ describe("Slide", () => {
         slideDone={vi.fn()}
         slideError={vi.fn()}
         forwardRef={ref}
-      />
+      />,
     );
 
     expect(ref.current).not.toBeNull();

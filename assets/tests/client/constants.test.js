@@ -11,7 +11,7 @@ describe("constants", () => {
   it("has all token state constants", () => {
     expect(constants.TOKEN_EXPIRED).toBe("Expired");
     expect(constants.TOKEN_VALID_SHOULD_HAVE_BEEN_REFRESHED).toBe(
-      "ValidShouldHaveBeenRefreshed"
+      "ValidShouldHaveBeenRefreshed",
     );
     expect(constants.TOKEN_VALID).toBe("Valid");
   });
@@ -29,7 +29,7 @@ describe("constants", () => {
     expect(constants.ERROR_RELEASE_FILE_NOT_LOADED).toBe("ER104");
     expect(constants.ERROR_TOKEN_EXPIRED).toBe("ER105");
     expect(constants.ERROR_TOKEN_VALID_SHOULD_HAVE_BEEN_REFRESHED).toBe(
-      "ER106"
+      "ER106",
     );
   });
 

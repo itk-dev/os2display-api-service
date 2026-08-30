@@ -73,14 +73,18 @@ describe("Region", () => {
   it("calls onRegionReady on mount", () => {
     render(<Region region={region} />);
 
-    expect(mockCallbacks.current.onRegionReady).toHaveBeenCalledWith("REGION01");
+    expect(mockCallbacks.current.onRegionReady).toHaveBeenCalledWith(
+      "REGION01",
+    );
   });
 
   it("calls onRegionRemoved on unmount", () => {
     const { unmount } = render(<Region region={region} />);
     unmount();
 
-    expect(mockCallbacks.current.onRegionRemoved).toHaveBeenCalledWith("REGION01");
+    expect(mockCallbacks.current.onRegionRemoved).toHaveBeenCalledWith(
+      "REGION01",
+    );
   });
 
   it("displays the first slide when regionSlides updates", () => {
@@ -93,9 +97,7 @@ describe("Region", () => {
 
     const { container } = render(<Region region={region} />);
 
-    expect(
-      within(container).getByTestId("slide-EXE-1")
-    ).toBeInTheDocument();
+    expect(within(container).getByTestId("slide-EXE-1")).toBeInTheDocument();
   });
 
   it("filters out invalid slides", () => {
@@ -108,9 +110,7 @@ describe("Region", () => {
 
     const { container } = render(<Region region={region} />);
 
-    expect(
-      within(container).getByTestId("slide-EXE-1")
-    ).toBeInTheDocument();
+    expect(within(container).getByTestId("slide-EXE-1")).toBeInTheDocument();
   });
 
   it("advances to next slide when slideDone is called", () => {
@@ -127,9 +127,7 @@ describe("Region", () => {
       capturedSlideDone();
     });
 
-    expect(
-      within(container).getByTestId("slide-EXE-2")
-    ).toBeInTheDocument();
+    expect(within(container).getByTestId("slide-EXE-2")).toBeInTheDocument();
   });
 
   it("wraps around to first slide after last", () => {
@@ -152,9 +150,7 @@ describe("Region", () => {
       capturedSlideDone();
     });
 
-    expect(
-      within(container).getByTestId("slide-EXE-1")
-    ).toBeInTheDocument();
+    expect(within(container).getByTestId("slide-EXE-1")).toBeInTheDocument();
   });
 
   it("recovers playback when new slides arrive after content was cleared mid-cycle", () => {
@@ -169,7 +165,9 @@ describe("Region", () => {
     expect(within(container).getByTestId("slide-EXE-1")).toBeInTheDocument();
 
     // Advance to slide 2.
-    act(() => { capturedSlideDone(); });
+    act(() => {
+      capturedSlideDone();
+    });
     expect(within(container).getByTestId("slide-EXE-2")).toBeInTheDocument();
 
     // Content is removed while slide 2 is still playing.
@@ -178,7 +176,9 @@ describe("Region", () => {
 
     // Slide 2 finishes — cycle wraps (nextIndex 0) and applies the empty
     // newSlides, setting currentSlide to null and slides to [].
-    act(() => { capturedSlideDone(); });
+    act(() => {
+      capturedSlideDone();
+    });
     expect(container.querySelector("[data-testid^='slide-']")).toBeNull();
 
     // New content arrives while currentSlide is null.

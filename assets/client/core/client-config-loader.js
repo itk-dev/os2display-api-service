@@ -23,7 +23,8 @@ const ClientConfigLoader = {
     if (
       configData !== null &&
       latestFetchTimestamp +
-        (configData?.configFetchInterval ?? defaults.configFetchIntervalDefault) >=
+        (configData?.configFetchInterval ??
+          defaults.configFetchIntervalDefault) >=
         nowTimestamp
     ) {
       return configData;

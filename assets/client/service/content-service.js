@@ -9,7 +9,7 @@ import idFromPath from "../util/id-from-path";
 import DataSync from "./data-sync";
 import ScheduleService from "./schedule-service";
 import ClientConfigLoader from "../core/client-config-loader.js";
-import { query } from "../core/api-query.js";
+import { query, queryAllPages } from "../core/api-query.js";
 
 /**
  * ContentService.
@@ -114,7 +114,10 @@ class ContentService {
     // Always push region data so both new and existing regions get content.
     // eslint-disable-next-line guard-for-in,no-restricted-syntax
     for (const regionKey in screen.regionData) {
-      this.scheduleService.updateRegion(regionKey, screen.regionData[regionKey]);
+      this.scheduleService.updateRegion(
+        regionKey,
+        screen.regionData[regionKey],
+      );
     }
   }
 
@@ -190,13 +193,14 @@ class ContentService {
       } else if (mode === "playlist") {
         const playlist = await query("getV2PlaylistsById", { id }, true);
 
-        const playlistSlidesResponse = await query(
+        // Paginated collection: fetch every page, not just the first.
+        const playlistSlides = await queryAllPages(
           "getV2PlaylistsByIdSlides",
           { id: idFromPath(playlist.slides) },
           true,
         );
 
-        playlist.slidesData = playlistSlidesResponse["hydra:member"].map(
+        playlist.slidesData = playlistSlides.map(
           (playlistSlide) => playlistSlide.slide,
         );
 
@@ -220,18 +224,20 @@ class ContentService {
         logger.error(`Unsupported preview mode: ${mode}.`);
       }
     } catch (err) {
-      logger.error(
-        `Preview failed (mode: ${mode}, id: ${id}): ${err.message}`,
-      );
+      logger.error(`Preview failed (mode: ${mode}, id: ${id}): ${err.message}`);
     }
   }
 
   static async attachReferencesToSlide(slide) {
     /* eslint-disable no-param-reassign */
     try {
-      slide.templateData = await query("getV2TemplatesById", {
-        id: idFromPath(slide.templateInfo["@id"]),
-      }, true);
+      slide.templateData = await query(
+        "getV2TemplatesById",
+        {
+          id: idFromPath(slide.templateInfo["@id"]),
+        },
+        true,
+      );
     } catch (err) {
       slide.templateData = null;
       slide.invalid = true;
@@ -242,9 +248,13 @@ class ContentService {
 
     if (slide?.feed?.feedUrl !== undefined) {
       try {
-        slide.feedData = await query("getV2FeedsByIdData", {
-          id: idFromPath(slide.feed.feedUrl),
-        }, true);
+        slide.feedData = await query(
+          "getV2FeedsByIdData",
+          {
+            id: idFromPath(slide.feed.feedUrl),
+          },
+          true,
+        );
       } catch (err) {
         slide.feedData = null;
       }
@@ -257,9 +267,13 @@ class ContentService {
     for (const media of slide.media) {
       try {
         // eslint-disable-next-line no-await-in-loop
-        slide.mediaData[media] = await query("getV2MediaById", {
-          id: idFromPath(media),
-        }, true);
+        slide.mediaData[media] = await query(
+          "getV2MediaById",
+          {
+            id: idFromPath(media),
+          },
+          true,
+        );
       } catch (err) {
         slide.mediaData[media] = null;
       }
@@ -267,9 +281,13 @@ class ContentService {
 
     if (typeof slide.theme === "string" || slide.theme instanceof String) {
       try {
-        slide.theme = await query("getV2ThemesById", {
-          id: idFromPath(slide.theme),
-        }, true);
+        slide.theme = await query(
+          "getV2ThemesById",
+          {
+            id: idFromPath(slide.theme),
+          },
+          true,
+        );
       } catch (err) {
         // Keep theme as the original string path.
       }

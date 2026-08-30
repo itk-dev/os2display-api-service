@@ -13,37 +13,39 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // mockSelect simulates clientApi.endpoints[name].select(args) which returns
 // a selector function (state => cacheEntry). The double-arrow mirrors the real
 // RTK Query API: select(args) returns (state) => ({ data, ... }).
-const { mockDispatch, endpoints, mockSelect, dispatchDefaults } = vi.hoisted(() => {
-  const mockSelect = vi.fn(() => () => undefined);
-  const mockAbort = vi.fn();
-  const mockUnsubscribe = vi.fn();
+const { mockDispatch, endpoints, mockSelect, dispatchDefaults } = vi.hoisted(
+  () => {
+    const mockSelect = vi.fn(() => () => undefined);
+    const mockAbort = vi.fn();
+    const mockUnsubscribe = vi.fn();
 
-  const dispatchDefaults = {
-    unwrapResult: Promise.resolve("data"),
-    makeReturnValue() {
-      return {
-        unwrap: () => dispatchDefaults.unwrapResult,
-        abort: mockAbort,
-        unsubscribe: mockUnsubscribe,
-      };
-    },
-  };
+    const dispatchDefaults = {
+      unwrapResult: Promise.resolve("data"),
+      makeReturnValue() {
+        return {
+          unwrap: () => dispatchDefaults.unwrapResult,
+          abort: mockAbort,
+          unsubscribe: mockUnsubscribe,
+        };
+      },
+    };
 
-  const mockDispatch = vi.fn(() => dispatchDefaults.makeReturnValue());
+    const mockDispatch = vi.fn(() => dispatchDefaults.makeReturnValue());
 
-  mockDispatch._abort = mockAbort;
-  mockDispatch._unsubscribe = mockUnsubscribe;
+    mockDispatch._abort = mockAbort;
+    mockDispatch._unsubscribe = mockUnsubscribe;
 
-  const endpoints = {};
-  const initiate = vi.fn((args, opts) => ({
-    _endpoint: "testEndpoint",
-    _args: args,
-    _opts: opts,
-  }));
-  endpoints.testEndpoint = { initiate, select: mockSelect };
+    const endpoints = {};
+    const initiate = vi.fn((args, opts) => ({
+      _endpoint: "testEndpoint",
+      _args: args,
+      _opts: opts,
+    }));
+    endpoints.testEndpoint = { initiate, select: mockSelect };
 
-  return { mockDispatch, endpoints, mockSelect, dispatchDefaults };
-});
+    return { mockDispatch, endpoints, mockSelect, dispatchDefaults };
+  },
+);
 
 vi.mock("../../client/core/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn() },
@@ -213,8 +215,7 @@ describe("queryAllPages", () => {
         unwrap: () =>
           Promise.resolve({
             "hydra:member": [{ id: page }],
-            "hydra:view":
-              page < 3 ? { "hydra:next": `/page/${page + 1}` } : {},
+            "hydra:view": page < 3 ? { "hydra:next": `/page/${page + 1}` } : {},
           }),
         abort: vi.fn(),
         unsubscribe: vi.fn(),
@@ -238,7 +239,58 @@ describe("queryAllPages", () => {
     expect(mockDispatch).toHaveBeenCalledTimes(1);
   });
 
-  it("should return partial results when mid-pagination fetch throws", async () => {
+  it("should stop when the reported count exceeds the rows delivered", async () => {
+    // Regression test for #517: hydra:totalItems reports 20 while only 11 rows
+    // are deliverable. Observed in production 2026-08-11 08:57:23, where the
+    // previous count-based loop turned one such response into ~435k requests
+    // over 21 hours. Following hydra:next ends it at the last page instead.
+    let callCount = 0;
+    mockDispatch.mockImplementation(() => {
+      callCount += 1;
+      const page = callCount;
+      const members = page === 1 ? new Array(10).fill({ id: 1 }) : [{ id: 2 }];
+      return {
+        unwrap: () =>
+          Promise.resolve({
+            "hydra:member": members,
+            "hydra:totalItems": 20,
+            // Page 2 is the last page that exists, so it carries no next link.
+            "hydra:view":
+              page === 1 ? { "hydra:next": "/page/2" } : { "@id": "/page/2" },
+          }),
+        abort: vi.fn(),
+        unsubscribe: vi.fn(),
+      };
+    });
+
+    const result = await queryAllPages("testEndpoint", {});
+
+    expect(result).toHaveLength(11);
+    expect(mockDispatch).toHaveBeenCalledTimes(2);
+  });
+
+  it("should stop on an empty page even when hydra:next is present", async () => {
+    // A collection that keeps advertising a next link without delivering rows
+    // must not be able to keep the loop alive.
+    mockDispatch.mockImplementation(() => ({
+      unwrap: () =>
+        Promise.resolve({
+          "hydra:member": [],
+          "hydra:view": { "hydra:next": "/next" },
+        }),
+      abort: vi.fn(),
+      unsubscribe: vi.fn(),
+    }));
+
+    const result = await queryAllPages("testEndpoint", {});
+
+    expect(result).toEqual([]);
+    expect(mockDispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("should reject rather than return partial results when a page throws", async () => {
+    // Giving up the whole collection keeps a truncated playlist from reaching a
+    // screen as if it were complete.
     let callCount = 0;
     mockDispatch.mockImplementation(() => {
       callCount += 1;
@@ -261,23 +313,23 @@ describe("queryAllPages", () => {
       };
     });
 
-    const result = await queryAllPages("testEndpoint", {});
-
-    expect(result).toEqual([{ id: 1 }]);
+    await expect(queryAllPages("testEndpoint", {})).rejects.toThrow(
+      "fail page 2",
+    );
   });
 
-  it("should return empty array when page 1 returns null", async () => {
+  it("should reject when page 1 returns null", async () => {
     dispatchDefaults.unwrapResult = Promise.resolve(null);
 
-    const result = await queryAllPages("testEndpoint", {});
-
-    expect(result).toEqual([]);
+    await expect(queryAllPages("testEndpoint", {})).rejects.toThrow(
+      "Failed to fetch page 1 for testEndpoint",
+    );
   });
 
   it("should log error on null response", async () => {
     dispatchDefaults.unwrapResult = Promise.resolve(null);
 
-    await queryAllPages("testEndpoint", {});
+    await expect(queryAllPages("testEndpoint", {})).rejects.toThrow();
 
     expect(logger.error).toHaveBeenCalledWith(
       "Failed to fetch page 1 for testEndpoint",
@@ -311,9 +363,9 @@ describe("queryAllPages", () => {
 
     const result = await queryAllPages("testEndpoint", {});
 
-    expect(result).toHaveLength(50);
+    expect(result).toHaveLength(100);
     expect(logger.warn).toHaveBeenCalledWith(
-      "Reached max page limit (50) for testEndpoint",
+      "Reached max page limit (100) for testEndpoint",
     );
   });
 });

@@ -103,8 +103,24 @@ function makeSlide(id, mediaIds, title, text, checksumSuffix) {
 
 const playlist1SlidesJson = {
   "hydra:member": [
-    { slide: makeSlide(SLIDE_1_ID, [MEDIA_1_ID], "Slide 1 Title", "Slide 1 text", "1") },
-    { slide: makeSlide(SLIDE_2_ID, [MEDIA_2_ID], "Slide 2 Title", "Slide 2 text", "2") },
+    {
+      slide: makeSlide(
+        SLIDE_1_ID,
+        [MEDIA_1_ID],
+        "Slide 1 Title",
+        "Slide 1 text",
+        "1",
+      ),
+    },
+    {
+      slide: makeSlide(
+        SLIDE_2_ID,
+        [MEDIA_2_ID],
+        "Slide 2 Title",
+        "Slide 2 text",
+        "2",
+      ),
+    },
   ],
   "hydra:totalItems": 2,
 };

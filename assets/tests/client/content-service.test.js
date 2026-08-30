@@ -27,8 +27,10 @@ vi.mock("../../client/service/schedule-service", () => {
 });
 
 const mockQuery = vi.fn();
+const mockQueryAllPages = vi.fn();
 vi.mock("../../client/core/api-query.js", () => ({
   query: (...args) => mockQuery(...args),
+  queryAllPages: (...args) => mockQueryAllPages(...args),
 }));
 
 vi.mock("../../client/util/id-from-path", () => ({
@@ -99,7 +101,7 @@ describe("ContentService", () => {
       service.start();
 
       expect(logger.warn).toHaveBeenCalledWith(
-        "Content service already started."
+        "Content service already started.",
       );
     });
 
@@ -115,9 +117,7 @@ describe("ContentService", () => {
       service.stop();
 
       // Should not throw or log.
-      expect(logger.info).not.toHaveBeenCalledWith(
-        "Content service stopped."
-      );
+      expect(logger.info).not.toHaveBeenCalledWith("Content service stopped.");
     });
   });
 
@@ -171,9 +171,7 @@ describe("ContentService", () => {
 
       expect(callbacks.current.setScreen).toHaveBeenCalledTimes(1);
       const screenArg = callbacks.current.setScreen.mock.calls[0][0];
-      expect(screenArg["@id"]).toBe(
-        "/v2/screens/SCREEN01234567890123456789"
-      );
+      expect(screenArg["@id"]).toBe("/v2/screens/SCREEN01234567890123456789");
       // regionData should be stripped from the screen passed to setScreen.
       expect(screenArg.regionData).toBeUndefined();
     });
@@ -199,7 +197,7 @@ describe("ContentService", () => {
 
       expect(service.scheduleService.updateRegion).toHaveBeenCalledWith(
         "region1",
-        screen.regionData.region1
+        screen.regionData.region1,
       );
     });
 
@@ -236,7 +234,7 @@ describe("ContentService", () => {
 
       expect(service.scheduleService.updateRegion).toHaveBeenCalledWith(
         "region1",
-        service.currentScreen.regionData.region1
+        service.currentScreen.regionData.region1,
       );
     });
 
@@ -252,7 +250,7 @@ describe("ContentService", () => {
       service.regionRemoved("region1");
 
       expect(service.scheduleService.regionRemoved).toHaveBeenCalledWith(
-        "region1"
+        "region1",
       );
     });
   });
@@ -264,7 +262,7 @@ describe("ContentService", () => {
       await service.startPreview("screen", "SCREEN01234567890123456789");
 
       expect(spy).toHaveBeenCalledWith(
-        "/v2/screens/SCREEN01234567890123456789"
+        "/v2/screens/SCREEN01234567890123456789",
       );
     });
 
@@ -273,30 +271,39 @@ describe("ContentService", () => {
         "@id": "/v2/playlists/PLSTAAA0000000000000000001",
         slides: "/v2/playlists/PLSTAAA0000000000000000001/slides",
       };
-      const slidesResponse = {
-        "hydra:member": [
-          {
-            slide: {
-              "@id": "/v2/slides/SLIDEAAA000000000000000001",
-              templateInfo: { "@id": "/v2/templates/TMPLAAA0000000000000000001" },
-              media: [],
+      // queryAllPages returns the members of every page, already flattened.
+      const playlistSlides = [
+        {
+          slide: {
+            "@id": "/v2/slides/SLIDEAAA000000000000000001",
+            templateInfo: {
+              "@id": "/v2/templates/TMPLAAA0000000000000000001",
             },
+            media: [],
           },
-        ],
+        },
+      ];
+      const templateData = {
+        "@id": "/v2/templates/TMPLAAA0000000000000000001",
       };
-      const templateData = { "@id": "/v2/templates/TMPLAAA0000000000000000001" };
 
       mockQuery
         .mockResolvedValueOnce(playlist)
-        .mockResolvedValueOnce(slidesResponse)
         .mockResolvedValueOnce(templateData);
+      mockQueryAllPages.mockResolvedValueOnce(playlistSlides);
 
       await service.startPreview("playlist", "PLSTAAA0000000000000000001");
 
       expect(mockQuery).toHaveBeenCalledWith(
         "getV2PlaylistsById",
         { id: "PLSTAAA0000000000000000001" },
-        true
+        true,
+      );
+      // Every page of slides is fetched, so a preview is not capped at one page.
+      expect(mockQueryAllPages).toHaveBeenCalledWith(
+        "getV2PlaylistsByIdSlides",
+        { id: "PLSTAAA0000000000000000001" },
+        true,
       );
       expect(callbacks.current.setScreen).toHaveBeenCalled();
     });
@@ -307,7 +314,9 @@ describe("ContentService", () => {
         templateInfo: { "@id": "/v2/templates/TMPLAAA0000000000000000001" },
         media: ["/v2/media/MDIAAA00000000000000000001"],
       };
-      const templateData = { "@id": "/v2/templates/TMPLAAA0000000000000000001" };
+      const templateData = {
+        "@id": "/v2/templates/TMPLAAA0000000000000000001",
+      };
       const mediaData = { "@id": "/v2/media/MDIAAA00000000000000000001" };
 
       mockQuery
@@ -320,7 +329,7 @@ describe("ContentService", () => {
       expect(mockQuery).toHaveBeenCalledWith(
         "getV2SlidesById",
         { id: "SLIDEAAA000000000000000001" },
-        true
+        true,
       );
       expect(callbacks.current.setScreen).toHaveBeenCalled();
     });
@@ -329,7 +338,7 @@ describe("ContentService", () => {
       await service.startPreview("unknown", "123");
 
       expect(logger.error).toHaveBeenCalledWith(
-        "Unsupported preview mode: unknown."
+        "Unsupported preview mode: unknown.",
       );
     });
 
@@ -339,7 +348,7 @@ describe("ContentService", () => {
       await service.startPreview("slide", "SLIDEAAA000000000000000001");
 
       expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining("Preview failed")
+        expect.stringContaining("Preview failed"),
       );
     });
   });
@@ -354,7 +363,9 @@ describe("ContentService", () => {
         theme: "/v2/themes/THMEAAA0000000000000000001",
       };
 
-      const templateData = { "@id": "/v2/templates/TMPLAAA0000000000000000001" };
+      const templateData = {
+        "@id": "/v2/templates/TMPLAAA0000000000000000001",
+      };
       const mediaData = { "@id": "/v2/media/MDIAAA00000000000000000001" };
       const feedData = [{ title: "Feed item" }];
       const themeData = { "@id": "/v2/themes/THMEAAA0000000000000000001" };
@@ -370,7 +381,7 @@ describe("ContentService", () => {
 
       expect(slide.templateData).toEqual(templateData);
       expect(slide.mediaData["/v2/media/MDIAAA00000000000000000001"]).toEqual(
-        mediaData
+        mediaData,
       );
       expect(slide.feedData).toEqual(feedData);
       expect(slide.theme).toEqual(themeData);
@@ -420,7 +431,9 @@ describe("ContentService", () => {
 
       await ContentService.attachReferencesToSlide(slide);
 
-      expect(slide.mediaData["/v2/media/MDIAAA00000000000000000001"]).toBeNull();
+      expect(
+        slide.mediaData["/v2/media/MDIAAA00000000000000000001"],
+      ).toBeNull();
     });
 
     it("keeps theme as string when theme fetch fails", async () => {

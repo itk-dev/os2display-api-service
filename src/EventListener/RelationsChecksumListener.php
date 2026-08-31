@@ -20,6 +20,7 @@ use App\Entity\Tenant\ScreenGroupCampaign;
 use App\Entity\Tenant\Slide;
 use App\Service\RelationsChecksumCalculator;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
+use Doctrine\DBAL\Exception;
 use Doctrine\ORM\Event\OnFlushEventArgs;
 use Doctrine\ORM\Event\PostFlushEventArgs;
 use Doctrine\ORM\Event\PrePersistEventArgs;
@@ -289,7 +290,7 @@ class RelationsChecksumListener
      *
      * @return void
      *
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
     final public function postFlush(PostFlushEventArgs $args): void
     {

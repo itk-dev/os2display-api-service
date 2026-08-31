@@ -1609,42 +1609,6 @@ parameters:
 			path: src/Feed/ColiboFeedType.php
 
 		-
-			message: '#^Method App\\Feed\\EventDatabaseApiFeedType\:\:getAdminFormOptions\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/EventDatabaseApiFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\EventDatabaseApiFeedType\:\:getConfigOptions\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/EventDatabaseApiFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\EventDatabaseApiFeedType\:\:getData\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/EventDatabaseApiFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\EventDatabaseApiFeedType\:\:getRequiredConfiguration\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/EventDatabaseApiFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\EventDatabaseApiFeedType\:\:getRequiredSecrets\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/EventDatabaseApiFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\EventDatabaseApiFeedType\:\:getSchema\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/EventDatabaseApiFeedType.php
-
-		-
 			message: '#^Method App\\Feed\\EventDatabaseApiV2FeedType\:\:getAdminFormOptions\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1763,48 +1727,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Feed/FeedTypeInterface.php
-
-		-
-			message: '#^Method App\\Feed\\KobaFeedType\:\:getAdminFormOptions\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/KobaFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\KobaFeedType\:\:getBookingsFromResource\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/KobaFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\KobaFeedType\:\:getConfigOptions\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/KobaFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\KobaFeedType\:\:getData\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/KobaFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\KobaFeedType\:\:getRequiredConfiguration\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/KobaFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\KobaFeedType\:\:getRequiredSecrets\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/KobaFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\KobaFeedType\:\:getSchema\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/KobaFeedType.php
 
 		-
 			message: '#^Method App\\Feed\\NotifiedFeedType\:\:getAdminFormOptions\(\) return type has no value type specified in iterable type array\.$#'
@@ -1931,42 +1853,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Feed/SourceType/Colibo/ApiClient.php
-
-		-
-			message: '#^Method App\\Feed\\SparkleIOFeedType\:\:getAdminFormOptions\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/SparkleIOFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\SparkleIOFeedType\:\:getConfigOptions\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/SparkleIOFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\SparkleIOFeedType\:\:getData\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/SparkleIOFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\SparkleIOFeedType\:\:getRequiredConfiguration\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/SparkleIOFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\SparkleIOFeedType\:\:getRequiredSecrets\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/SparkleIOFeedType.php
-
-		-
-			message: '#^Method App\\Feed\\SparkleIOFeedType\:\:getSchema\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Feed/SparkleIOFeedType.php
 
 		-
 			message: '#^Method App\\Filter\\CampaignFilter\:\:filterProperty\(\) has parameter \$value with no type specified\.$#'
@@ -2223,18 +2109,6 @@ parameters:
 		-
 			message: '#^Class App\\Repository\\MediaRepository has PHPDoc tag @method for method findOneBy\(\) parameter \#2 \$orderBy with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: src/Repository/MediaRepository.php
-
-		-
-			message: '#^Undefined variable\: \$itemsPerPage$#'
-			identifier: variable.undefined
-			count: 1
-			path: src/Repository/MediaRepository.php
-
-		-
-			message: '#^Undefined variable\: \$page$#'
-			identifier: variable.undefined
 			count: 1
 			path: src/Repository/MediaRepository.php
 
@@ -2647,12 +2521,6 @@ parameters:
 			path: src/Repository/TemplateRepository.php
 
 		-
-			message: '#^Property App\\Repository\\TemplateRepository\:\:\$registry is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: src/Repository/TemplateRepository.php
-
-		-
 			message: '#^Class App\\Repository\\TenantRepository has PHPDoc tag @method for method findBy\(\) parameter \#1 \$criteria with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -2821,12 +2689,6 @@ parameters:
 			path: src/Security/AzureOidcAuthenticator.php
 
 		-
-			message: '#^Property App\\Security\\AzureOidcAuthenticator\:\:\$providerManager is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: src/Security/AzureOidcAuthenticator.php
-
-		-
 			message: '#^Property App\\Security\\EventListener\\JWTCreatedListener\:\:\$requestStack is never read, only written\.$#'
 			identifier: property.onlyWritten
 			count: 1
@@ -2893,12 +2755,6 @@ parameters:
 			path: src/Service/InteractiveSlideService.php
 
 		-
-			message: '#^Method App\\Service\\InteractiveSlideService\:\:parseRequestBody\(\) has parameter \$requestBody with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Service/InteractiveSlideService.php
-
-		-
 			message: '#^Method App\\Service\\InteractiveSlideService\:\:performAction\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -2945,18 +2801,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Service/TenantFactory.php
-
-		-
-			message: '#^Negated boolean expression is always false\.$#'
-			identifier: booleanNot.alwaysFalse
-			count: 1
-			path: src/Service/UserService.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between App\\Enum\\UserTypeEnum\:\:OIDC_EXTERNAL and false will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: src/Service/UserService.php
 
 		-
 			message: '#^Class App\\State\\AbstractProcessor implements generic interface ApiPlatform\\State\\ProcessorInterface but does not specify its types\: T1, T2$#'
@@ -3699,18 +3543,6 @@ parameters:
 		-
 			message: '#^Method App\\State\\TemplateProvider\:\:__construct\(\) has parameter \$collectionProvider with generic interface ApiPlatform\\State\\ProviderInterface but does not specify its types\: T$#'
 			identifier: missingType.generics
-			count: 1
-			path: src/State/TemplateProvider.php
-
-		-
-			message: '#^Property App\\State\\TemplateProvider\:\:\$collectionProvider is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: src/State/TemplateProvider.php
-
-		-
-			message: '#^Property App\\State\\TemplateProvider\:\:\$entityRepository is never read, only written\.$#'
-			identifier: property.onlyWritten
 			count: 1
 			path: src/State/TemplateProvider.php
 

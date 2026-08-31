@@ -77,11 +77,18 @@ RUN APP_ENV=prod composer install --no-dev --optimize-autoloader --classmap-auth
 
 # The client polls /release.json to detect when a screen should refresh;
 # shape per docs/release-example.json.
+#
+# DEPRECATED: the copy at /client/release.json exists only to provide an
+# upgrade path for still-running 2.x screen clients, which poll that path.
+# Without it the Symfony catch-all /client{subroutes} route answers with the
+# SPA's index.html and 2.x screens never detect the new release. Remove once
+# 2.x clients are out of the field.
 RUN printf '{"releaseTimestamp": %s, "releaseTime": "%s", "releaseVersion": "%s"}\n' \
       "${APP_RELEASE_TIMESTAMP}" \
       "${APP_RELEASE_TIME}" \
       "${APP_VERSION}" \
-      > public/release.json
+      > public/release.json \
+    && cp public/release.json public/client/release.json
 
 
 ################################
@@ -98,11 +105,25 @@ LABEL org.opencontainers.image.authors="ITK Dev <itkdev@ba.aarhus.dk>" \
       org.opencontainers.image.documentation="https://github.com/os2display/display-api-service#readme" \
       org.opencontainers.image.base.name="itkdev/php8.4-fpm:alpine"
 
+# OPcache values follow the Symfony performance checklist
+# (https://symfony.com/doc/current/performance.html): the prod image ships
+# ~8k PHP files (vendor --no-dev ≈ 7.5k + app code + warmed var/cache/prod),
+# so MAX_ACCELERATED_FILES=16229 (OPcache rounds up to primes from a fixed
+# table; 16229 is the bucket above 8k) leaves ~2x headroom; the 32 MB
+# interned-strings buffer covers Symfony's many fully-qualified class names
+# (the base image default of 16 is too tight). PRELOAD points at Symfony's
+# preload entry, which requires the warmed prod cache — docker-entrypoint.sh
+# runs cache:warmup before exec'ing php-fpm, so the generated
+# App_KernelProdContainer.preload.php exists by the time OPcache preloads.
+# PHP_OPCACHE_PRELOAD_USER is left at the base image's default (`deploy`),
+# which matches the user php-fpm's master runs as here (see USER below).
 ENV APP_ENV=prod \
     PHP_OPCACHE_ENABLED=1 \
     PHP_OPCACHE_VALIDATE_TIMESTAMPS=0 \
-    PHP_OPCACHE_MAX_ACCELERATED_FILES=20000 \
+    PHP_OPCACHE_MAX_ACCELERATED_FILES=16229 \
     PHP_OPCACHE_MEMORY_CONSUMPTION=256 \
+    PHP_OPCACHE_INTERNED_STRINGS_BUFFER=32 \
+    PHP_OPCACHE_PRELOAD=/app/config/preload.php \
     PHP_PM_TYPE="dynamic" \
     PHP_PM_MAX_CHILDREN="24" \
     PHP_PM_MAX_REQUESTS="0" \
@@ -119,7 +140,13 @@ COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 # Prometheus exporter for php-fpm pool stats; scraped by ops monitoring.
 COPY --from=hipages/php-fpm_exporter:2.2.0 /php-fpm_exporter /usr/local/bin/php-fpm_exporter
 
-COPY --chmod=0755 docker-entrypoint.sh /usr/local/bin/
+# Minimal FastCGI client (~100 KB) so `opcache-status` can execute
+# bin/opcache-status.php inside an FPM worker — the only place the pool's
+# OPcache shared memory is visible (CLI PHP has its own). The lightweight
+# alternative to bundling the ~4 MB cachetool phar.
+RUN apk add --no-cache fcgi
+
+COPY --chmod=0755 docker-entrypoint.sh opcache-status /usr/local/bin/
 
 USER deploy
 

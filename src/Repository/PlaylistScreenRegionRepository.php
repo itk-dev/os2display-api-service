@@ -13,6 +13,8 @@ use App\Entity\Tenant\Screen;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\OptimisticLockException;
+use Doctrine\ORM\ORMException;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Uid\Ulid;
@@ -23,7 +25,7 @@ use Symfony\Component\Uid\Ulid;
  * @method PlaylistScreenRegion[]    findAll()
  * @method PlaylistScreenRegion[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
- * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\Tenant\PlaylistScreenRegion>
+ * @extends ServiceEntityRepository<PlaylistScreenRegion>
  */
 class PlaylistScreenRegionRepository extends ServiceEntityRepository
 {
@@ -51,8 +53,8 @@ class PlaylistScreenRegionRepository extends ServiceEntityRepository
     /**
      * Create relation between a playlist in a given region on a given screen.
      *
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
+     * @throws ORMException
+     * @throws OptimisticLockException
      */
     public function updateRelations(Ulid $screenUlid, Ulid $regionUlid, ArrayCollection $collection, Tenant $tenant): void
     {
@@ -118,8 +120,8 @@ class PlaylistScreenRegionRepository extends ServiceEntityRepository
     /**
      * Remove relation between a playlist in a given region on a given screen.
      *
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
+     * @throws ORMException
+     * @throws OptimisticLockException
      */
     public function deleteRelations(Ulid $screenUlid, Ulid $regionUid, Ulid $playlistUlid): void
     {
@@ -140,7 +142,7 @@ class PlaylistScreenRegionRepository extends ServiceEntityRepository
     /**
      * Remove all relations a playlist has within a tenant.
      *
-     * @throws \Doctrine\ORM\ORMException
+     * @throws ORMException
      */
     public function deleteRelationsPlaylistsTenant(Ulid $playlistUlid, string $tenantUlid): void
     {

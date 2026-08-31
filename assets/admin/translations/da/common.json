@@ -287,11 +287,6 @@
       "title": "BRND"
     },
     "dynamic-fields": {
-      "event-database-api-feed-type": {
-        "title": "Eventdatabase API",
-        "host": "Eventdatabase API host",
-        "redacted-value-input-placeholder": "Skjult værdi"
-      },
       "notified-feed-type": {
         "title": "Notified",
         "token": "Notified API token",
@@ -1020,7 +1015,8 @@
   },
   "file-selector": {
     "open-media-library": "Vælg fra mediearkiv",
-    "max-size": "Maksimal størrelse på filer"
+    "max-size": "Maksimal størrelse på filer",
+    "loading": "Henter konfiguration..."
   },
   "poster-selector": {
     "preview-of-events": "Forhåndsvisning af begivenheder udfra valg",

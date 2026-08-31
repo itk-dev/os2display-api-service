@@ -7,20 +7,22 @@ namespace App\Entity\Tenant;
 use App\Entity\Interfaces\RelationsChecksumInterface;
 use App\Entity\Traits\EntityTitleDescriptionTrait;
 use App\Entity\Traits\RelationsChecksumTrait;
+use App\EventListener\ThemeDoctrineEventListener;
 use App\Repository\ThemeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ThemeRepository::class)]
-#[ORM\EntityListeners([\App\EventListener\ThemeDoctrineEventListener::class])]
-#[ORM\Index(fields: ['changed'], name: 'changed_idx')]
+#[ORM\EntityListeners([ThemeDoctrineEventListener::class])]
+#[ORM\Index(fields: ['changed'], name: 'theme_changed_idx')]
 class Theme extends AbstractTenantScopedEntity implements RelationsChecksumInterface
 {
     use EntityTitleDescriptionTrait;
     use RelationsChecksumTrait;
 
-    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::TEXT)]
+    #[ORM\Column(type: Types::TEXT)]
     private string $cssStyles = '';
 
     #[ORM\OneToOne(targetEntity: Media::class)]

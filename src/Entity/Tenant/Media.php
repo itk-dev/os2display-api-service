@@ -7,46 +7,48 @@ namespace App\Entity\Tenant;
 use App\Entity\Interfaces\RelationsChecksumInterface;
 use App\Entity\Traits\EntityTitleDescriptionTrait;
 use App\Entity\Traits\RelationsChecksumTrait;
+use App\EventListener\MediaDoctrineEventListener;
 use App\Repository\MediaRepository;
+use App\Validator\MediaFile;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\HttpFoundation\File\File;
-use Symfony\Component\Validator\Constraints as Assert;
 use Vich\UploaderBundle\Mapping\Attribute as Vich;
 
 #[Vich\Uploadable]
 #[ORM\Entity(repositoryClass: MediaRepository::class)]
-#[ORM\EntityListeners([\App\EventListener\MediaDoctrineEventListener::class])]
-#[ORM\Index(fields: ['changed'], name: 'changed_idx')]
+#[ORM\EntityListeners([MediaDoctrineEventListener::class])]
+#[ORM\Index(fields: ['changed'], name: 'media_changed_idx')]
 class Media extends AbstractTenantScopedEntity implements RelationsChecksumInterface
 {
     use EntityTitleDescriptionTrait;
     use RelationsChecksumTrait;
 
     #[Vich\UploadableField(mapping: 'media_object', fileNameProperty: 'filePath', size: 'size')]
-    #[Assert\File(maxSize: '200000k', mimeTypes: ['image/jpeg', 'image/png', 'image/svg+xml', 'video/webm', 'video/mp4', 'image/gif'], mimeTypesMessage: 'Please upload a valid image format: jpeg, svg, gif or png, or video format: webm or mp4')]
+    #[MediaFile]
     public ?File $file = null;
 
     #[ORM\Column(nullable: true)]
     public ?string $filePath = null;
 
-    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: true, options: ['default' => ''])]
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true, options: ['default' => ''])]
     private string $license = '';
 
-    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, options: ['default' => 0])]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $width = 0;
 
-    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, options: ['default' => 0])]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $height = 0;
 
-    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, options: ['default' => 0])]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $size = 0;
 
-    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::STRING, options: ['default' => ''])]
+    #[ORM\Column(type: Types::STRING, options: ['default' => ''])]
     private string $mimeType = '';
 
-    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::STRING, options: ['default' => ''])]
+    #[ORM\Column(type: Types::STRING, options: ['default' => ''])]
     private string $sha = '';
 
     /**

@@ -11,10 +11,10 @@ use Gesdinet\JWTRefreshTokenBundle\Doctrine\RefreshTokenManager;
 class AuthenticationScreenTest extends AbstractBaseApiTestCase
 {
     // .env.test:JWT_SCREEN_TOKEN_TTL=43200 # 12 hours
-    final public const ENV_JWT_SCREEN_TOKEN_TTL = 43200;
+    final public const int ENV_JWT_SCREEN_TOKEN_TTL = 43200;
 
     // .env.test:JWT_SCREEN_REFRESH_TOKEN_TTL=86400 # 24 hours
-    final public const ENV_JWT_SCREEN_REFRESH_TOKEN_TTL = 86400;
+    final public const int ENV_JWT_SCREEN_REFRESH_TOKEN_TTL = 86400;
 
     public function testBindKeyUnchanged(): void
     {

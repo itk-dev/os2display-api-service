@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Upgraded to Vite 8 and React 19.
+- Refreshed the npm dependency tree after merging release/3.0.0, taking `npm audit` from 12
+  advisories (8 high) to zero; the only range change was `esbuild` `^0.27.2` → `^0.28.2`.
+- Fixed the calendar Playwright specs failing whenever the suite ran on the 31st of a month:
+  the `fixTime` helper mutated the current date, so `setMonth(8)` overflowed September into
+  October and shifted the pinned clock.
+
 ## [3.0.0-rc8] - 2026-08-24
 
 - Removed the `app:utils:convert-config-json-to-env` command, superseded by 2.8's

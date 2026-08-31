@@ -660,8 +660,9 @@
     }
   },
   "pagination": {
-    "pagination-previous": "Tidligere",
-    "pagination-next": "Næste"
+    "prev": "←",
+    "next": "→",
+    "page": "Side {{currentPage}}"
   },
   "search-box": {
     "search-box-aria-label": "Søg",

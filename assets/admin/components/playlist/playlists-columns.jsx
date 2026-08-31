@@ -18,14 +18,14 @@ function SlidesButton({ playlist }) {
 
   const onClick = () => {
     getAllPages(dispatch, enhancedApi.endpoints.getV2PlaylistsByIdSlides, {
-      id: idFromUrl(playlist.id),
+      id: idFromUrl(playlist["@id"] ?? playlist.id),
     }).then((playlistSlides) => {
       const content = (
         <ul>
           {playlistSlides.map((playlistSlide) => (
             <li key={playlistSlide?.slide["@id"]}>
               <Link
-                to={`slide/edit/${idFromUrl(playlistSlide?.slide["@id"])}`}
+                to={`/slide/edit/${idFromUrl(playlistSlide?.slide["@id"])}`}
                 target="_blank"
               >
                 {playlistSlide?.slide.title}

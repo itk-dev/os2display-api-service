@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
   cannot be posted with a read-only token.
 - Fixed screens losing their playlists and screen groups when the screen form was saved more than
   once (#513).
+- Fixed landscape videos being cropped left and right on portrait screens (#511).
 
 ## [3.0.0-rc8] - 2026-08-24
 

@@ -202,7 +202,7 @@ function ContentForm({
             onChange={onChange}
             name={formData.name}
             helpText={formData.helpText}
-            value={formStateObject[formData.name]}
+            value={formStateObject[formData.name] ?? formData?.defaultValue}
             formGroupClasses={formData.formGroupClasses}
           />
         );

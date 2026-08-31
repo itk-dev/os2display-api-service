@@ -2,11 +2,10 @@ import { test, expect } from "@playwright/test";
 
 // Fixed time since the calendar template filters events older than now.
 const fixTime = async (page) => {
-  const newDate = new Date();
-  newDate.setMonth(8);
-  newDate.setDate(15);
-  newDate.setHours(6);
-  newDate.setMinutes(0);
+  // Build the date in one go rather than mutating: setMonth(8) on a date whose
+  // day-of-month is 31 overflows into October (September has 30 days), which
+  // silently shifted the fixed time whenever the suite ran on the 31st.
+  const newDate = new Date(new Date().getFullYear(), 8, 15, 6, 0);
   await page.clock.install({ time: newDate });
 };
 

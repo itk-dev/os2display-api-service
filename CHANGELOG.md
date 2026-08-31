@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed the calendar template Playwright tests failing on the 31st of a month, where the fixed test
+  clock rolled over into the following month.
+
 ## [3.0.0-rc8] - 2026-08-24
 
 - Removed the `app:utils:convert-config-json-to-env` command, superseded by 2.8's

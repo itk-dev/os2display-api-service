@@ -41,7 +41,7 @@ function renderSlide(slide, run, slideDone) {
 function Video({ slide, content, run, slideDone, executionId }) {
   const videoUrls = getAllMediaUrlsFromField(slide.mediaData, content.video);
   const videoRef = useRef();
-  const { sound, mediaContain } = content;
+  const { sound, mediaContain = true } = content;
 
   const onEnded = () => {
     slideDone(slide);

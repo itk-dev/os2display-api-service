@@ -10,6 +10,11 @@ All notable changes to this project will be documented in this file.
   cannot be posted with a read-only token.
 - Fixed `RelationsChecksumListenerTest::testPersistPlaylistScreenRegion` failing at random, where an
   unordered fixture lookup collided with the unique constraint on a playlist/screen/region.
+- Fixed the "number of slides" button doing nothing in the admin playlist tables on the screen and
+  slide edit pages (#514).
+- Fixed screens losing their playlists and screen groups when the screen form was saved more than
+  once (#513).
+- Fixed landscape videos being cropped left and right on portrait screens (#511).
 
 ## [3.0.0-rc8] - 2026-08-24
 

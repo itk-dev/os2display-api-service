@@ -5,6 +5,7 @@ import idFromPath from "../util/id-from-path";
 import IconClose from "../assets/icon-close.svg";
 import IconPointer from "../assets/icon-pointer.svg";
 import Slide from "./slide.jsx";
+import nextRunId from "../util/next-run-id";
 import "./touch-region.scss";
 
 /**
@@ -123,7 +124,7 @@ function TouchRegion({ region }) {
   const startSlide = (slide) => {
     setDisplayClose(true);
     setCurrentSlide(slide);
-    setRunId(new Date().toISOString());
+    setRunId(nextRunId);
   };
 
   return (

@@ -5,6 +5,7 @@ import ErrorBoundary from "./error-boundary.jsx";
 import idFromPath from "../util/id-from-path";
 import logger from "../logger/logger";
 import Slide from "./slide.jsx";
+import nextRunId from "../util/next-run-id";
 import "./region.scss";
 
 /**
@@ -67,7 +68,7 @@ function Region({ region }) {
       setCurrentSlide(nextSlideAndIndex.nextSlide);
     }
 
-    setRunId(new Date().toISOString());
+    setRunId(nextRunId);
 
     logger.info(`Slide done with executionId: ${slide?.executionId}`);
 
@@ -160,7 +161,7 @@ function Region({ region }) {
     if (!currentSlide) {
       if (slides.length > 0) {
         setCurrentSlide(slides[0]);
-        setRunId(new Date().toISOString());
+        setRunId(nextRunId);
       }
     }
 

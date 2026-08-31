@@ -9,7 +9,7 @@ import "./slide.scss";
  * @param {object} props - Props.
  * @param {object} props.slide - The slide data.
  * @param {string} props.id - The unique slide id.
- * @param {string} props.run - Timestamp for when to run the slide.
+ * @param {number} props.run - Run id. Changes each time the slide should run.
  * @param {Function} props.slideDone - The function to call when the slide is done running.
  * @param {Function} props.slideError - Callback when slide encountered an error.
  * @param {object} props.forwardRef - Ref to the slide root element. Used as

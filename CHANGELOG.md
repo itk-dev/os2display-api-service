@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed a region locking up when a slide signalled `slideDone()` in the same millisecond it started.
+  The run id was a `new Date().toISOString()` timestamp, and a slide is keyed by its execution id, so
+  a region holding a single slide never remounts it — replaying depends entirely on the run id
+  changing value. Identical timestamps made React bail out of the state update, so the slide never
+  ran again. The run id is now a counter, shared by `region.jsx` and `touch-region.jsx`.
 - Fixed the calendar template Playwright tests failing on the 31st of a month, where the fixed test
   clock rolled over into the following month.
 - Fixed the API-spec workflow failing on pull requests from forks, where the informational PR comment

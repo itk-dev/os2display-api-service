@@ -1,4 +1,4 @@
-import { createRef, useEffect, useRef, useState } from "react";
+import { createRef, useEffect, useRef, useState, useLayoutEffect } from "react";
 import parse from "html-react-parser";
 import DOMPurify from "dompurify";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
@@ -45,7 +45,6 @@ function ImageText({ slide, content, run, slideDone, executionId }) {
   const imagesRef = useRef([]);
   const durationRef = useRef();
   const [images, setImages] = useState([]);
-  imagesRef.current = images;
   const [currentImage, setCurrentImage] = useState();
   const logo = slide?.theme?.logo;
   const {
@@ -89,7 +88,14 @@ function ImageText({ slide, content, run, slideDone, executionId }) {
 
   // Content from content
   const { title, text, textColor, boxColor, duration = 15000 } = content;
-  durationRef.current = duration;
+
+  // Mirrored into refs in an effect rather than during render: a render may be
+  // discarded or replayed under concurrent rendering, so it must not have side
+  // effects. Same discipline as the slide-execution hooks.
+  useLayoutEffect(() => {
+    imagesRef.current = images;
+    durationRef.current = duration;
+  });
 
   const sanitizedText = DOMPurify.sanitize(text);
 

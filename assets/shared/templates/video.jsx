@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useLayoutEffect } from "react";
 import {
   getAllMediaUrlsFromField,
   ThemeStyles,
@@ -48,12 +48,21 @@ function Video({ slide, content, run, slideDone, executionId }) {
   const videoUrls = getAllMediaUrlsFromField(slide.mediaData, content.video);
   const videoRef = useRef();
   const doneRef = useRef(false);
+  const slideRef = useRef(slide);
+  const slideDoneRef = useRef(slideDone);
   const { sound, mediaContain = true } = content;
+
+  // Read when a guard timer or media event fires, not when the effect ran, so
+  // they must come from refs. Same discipline as the slide-execution hooks.
+  useLayoutEffect(() => {
+    slideRef.current = slide;
+    slideDoneRef.current = slideDone;
+  });
 
   const finish = () => {
     if (!doneRef.current) {
       doneRef.current = true;
-      slideDone(slide);
+      slideDoneRef.current(slideRef.current);
     }
   };
 
@@ -131,6 +140,12 @@ function Video({ slide, content, run, slideDone, executionId }) {
       }
       if (guardTimeout !== null) {
         clearTimeout(guardTimeout);
+      }
+
+      // The element survives a run→falsy transition in previews; without this
+      // it keeps playing, and an unmuted video keeps making noise.
+      if (!video.paused) {
+        video.pause();
       }
     };
   }, [run]);

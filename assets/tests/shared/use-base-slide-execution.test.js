@@ -151,4 +151,23 @@ describe("useBaseSlideExecution", () => {
 
     expect(slideDone).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps the duration it started with when duration changes mid-run", () => {
+    // The duration is read when the timer is set. Re-reading it on a later
+    // render would let a content update stretch or cut short a slide that is
+    // already playing.
+    const slideDone = vi.fn();
+
+    const { rerender } = renderHook(
+      ({ duration }) =>
+        useBaseSlideExecution({ slide: SLIDE, run: 1, slideDone, duration }),
+      { initialProps: { duration: 4000 } },
+    );
+
+    act(() => vi.advanceTimersByTime(3000));
+    rerender({ duration: 60000 });
+    act(() => vi.advanceTimersByTime(1000));
+
+    expect(slideDone).toHaveBeenCalledTimes(1);
+  });
 });

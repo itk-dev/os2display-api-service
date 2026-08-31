@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import localeDa from "dayjs/locale/da";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -49,7 +49,6 @@ function NewsFeed({ slide, content, run, slideDone, executionId }) {
   dayjs.extend(relativeTime);
 
   const [qr, setQr] = useState(null);
-  const fallbackRef = useRef(null);
 
   const { feedData = [], mediaData = {} } = slide;
   const {
@@ -68,6 +67,7 @@ function NewsFeed({ slide, content, run, slideDone, executionId }) {
     slide,
     slideDone,
     entryDuration: entryDuration * 1000,
+    emptyEntriesDuration: 5000,
   });
 
   // Generate QR code for current post link.
@@ -83,18 +83,6 @@ function NewsFeed({ slide, content, run, slideDone, executionId }) {
   }, [currentPost]);
 
   // If no content, wait 5 seconds and continue to next slide.
-  useEffect(() => {
-    if (run && feedEntries.length === 0) {
-      fallbackRef.current = setTimeout(() => slideDone(slide), 5000);
-    }
-
-    return () => {
-      if (fallbackRef.current) {
-        clearTimeout(fallbackRef.current);
-      }
-    };
-  }, [run]);
-
   const getImageUrl = (post) => {
     let imageUrl = fallbackImageUrl ?? null;
 

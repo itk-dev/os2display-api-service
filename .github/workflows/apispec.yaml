@@ -38,10 +38,10 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Cache vendor
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: vendor
           key: vendor-php8.4-${{ hashFiles('composer.lock') }}
@@ -70,7 +70,11 @@ jobs:
         run: git diff --diff-filter=ACMRT --exit-code public/api-spec-v2.yaml public/api-spec-v2.json
 
       - name: Comment PR if spec is outdated
-        if: steps.git-diff-spec.outcome == 'failure'
+        # Skipped on pull requests from forks: those runs get a read-only
+        # GITHUB_TOKEN, so posting fails with "Resource not accessible by
+        # integration". The "Fail if spec is outdated" step below still fails
+        # the job, so the gate itself is unaffected - only the comment is lost.
+        if: steps.git-diff-spec.outcome == 'failure' && github.event.pull_request.head.repo.fork == false
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -102,10 +106,12 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Fetch base branch for comparison
-        run: git fetch --depth=1 origin ${{ github.base_ref }}
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git fetch --depth=1 origin "$BASE_REF"
 
       # API Platform 3.4 emits empty header maps as YAML sequences
       # (`headers: []`) — out of spec per OpenAPI 3.x, which mandates a map.
@@ -119,9 +125,11 @@ jobs:
       # in https://github.com/os2display/display-api-service/issues (open
       # an issue when the upgrade is scheduled).
       - name: "Sanitise specs (`headers: []` → `headers: {}`)"
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           mkdir -p .api-spec-tmp
-          git show "origin/${{ github.base_ref }}:public/api-spec-v2.yaml" \
+          git show "origin/$BASE_REF:public/api-spec-v2.yaml" \
             | sed 's/headers: \[\]/headers: {}/g' > .api-spec-tmp/base.yaml
           sed 's/headers: \[\]/headers: {}/g' public/api-spec-v2.yaml \
             > .api-spec-tmp/revision.yaml
@@ -129,21 +137,34 @@ jobs:
       - name: Detect breaking changes
         id: breaking
         continue-on-error: true
-        uses: oasdiff/oasdiff-action/breaking@v0.0.44
+        uses: oasdiff/oasdiff-action/breaking@v0.1.13
         with:
           base: .api-spec-tmp/base.yaml
           revision: .api-spec-tmp/revision.yaml
           fail-on: ERR
+          # Compare effective (flattened) schemas so an allOf/$ref restructure
+          # is not reported as removed properties — API Platform emits plenty
+          # of both. Never masks a real diff.
+          flatten-allof: true
+          # 0.1.0 added an opt-out `review` input that defaults to true and
+          # uploads both specs to oasdiff.com to back a side-by-side review
+          # link. Encrypted client-side, but it still sends our API surface to
+          # a third party on every API-touching PR, so keep it off; detection
+          # and annotations are unaffected.
+          review: false
 
       - name: Generate changelog
         id: changelog
         continue-on-error: true
-        uses: oasdiff/oasdiff-action/changelog@v0.0.44
+        uses: oasdiff/oasdiff-action/changelog@v0.1.13
         with:
           base: .api-spec-tmp/base.yaml
           revision: .api-spec-tmp/revision.yaml
           format: markdown
           output-to-file: changelog.md
+          # See the notes on the breaking step above.
+          flatten-allof: true
+          review: false
 
       # oasdiff's changelog action writes a "No changes detected" placeholder
       # into changelog.md even when there's no diff, so file existence isn't
@@ -151,7 +172,13 @@ jobs:
       - name: Detect actual diff in changelog
         id: changes
         run: |
-          if [ -s changelog.md ] && ! grep -q 'No changes detected' changelog.md; then
+          # Identical specs cannot have a changelog. Decide that from the files
+          # themselves rather than from oasdiff's wording: PR #538 reported
+          # has_changes=true against a byte-identical spec, which then tried to
+          # post a comment it had nothing to say.
+          if cmp -s .api-spec-tmp/base.yaml .api-spec-tmp/revision.yaml; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          elif [ -s changelog.md ] && ! grep -q 'No changes detected' changelog.md; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
@@ -173,7 +200,9 @@ jobs:
           echo "id=${id:-}" >> "$GITHUB_OUTPUT"
 
       - name: Comment PR - non-breaking changes
-        if: steps.breaking.outcome == 'success' && steps.changes.outputs.has_changes == 'true'
+        # See the note on the fork guard above. This comment is purely
+        # informational, so a fork PR must not fail the job over it.
+        if: steps.breaking.outcome == 'success' && steps.changes.outputs.has_changes == 'true' && github.event.pull_request.head.repo.fork == false
         env:
           GH_TOKEN: ${{ github.token }}
           PREV_ID: ${{ steps.prev-comment.outputs.id }}
@@ -193,7 +222,11 @@ jobs:
           fi
 
       - name: Comment PR - breaking changes
-        if: steps.breaking.outcome == 'failure'
+        # See the note on the fork guard above. "Fail if breaking changes
+        # detected" below is the actual gate and runs regardless, so a
+        # breaking change from a fork still fails the job - just without the
+        # explanatory comment.
+        if: steps.breaking.outcome == 'failure' && github.event.pull_request.head.repo.fork == false
         env:
           GH_TOKEN: ${{ github.token }}
           PREV_ID: ${{ steps.prev-comment.outputs.id }}
@@ -220,7 +253,8 @@ jobs:
       # existing comment to reflect that. Don't post anything when there
       # was no prior comment — that would be the noise we just removed.
       - name: Mark previous comment resolved (when no changes)
-        if: steps.breaking.outcome == 'success' && steps.changes.outputs.has_changes == 'false' && steps.prev-comment.outputs.id != ''
+        # See the note on the fork guard above.
+        if: steps.breaking.outcome == 'success' && steps.changes.outputs.has_changes == 'false' && steps.prev-comment.outputs.id != '' && github.event.pull_request.head.repo.fork == false
         env:
           GH_TOKEN: ${{ github.token }}
           PREV_ID: ${{ steps.prev-comment.outputs.id }}

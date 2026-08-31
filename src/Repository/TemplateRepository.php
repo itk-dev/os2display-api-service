@@ -14,7 +14,7 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method Template[]    findAll()
  * @method Template[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
- * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\Template>
+ * @extends ServiceEntityRepository<Template>
  */
 class TemplateRepository extends ServiceEntityRepository implements MultiTenantRepositoryInterface
 {

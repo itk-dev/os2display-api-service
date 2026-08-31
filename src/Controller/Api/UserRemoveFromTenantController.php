@@ -10,6 +10,7 @@ use App\Service\UserService;
 use App\Utils\ValidationUtils;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -34,6 +35,6 @@ class UserRemoveFromTenantController extends AbstractController
             throw new NotFoundHttpException($e->getMessage());
         }
 
-        return new JsonResponse(null, \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT);
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 }

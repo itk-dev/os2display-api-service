@@ -48,12 +48,15 @@ class PullStrategy {
     const screenGroupCampaigns = [];
 
     try {
-      const response = await this.apiHelper.getPath(screen.inScreenGroups);
+      // Paginated collection: fetch every page, not just the first.
+      const response = await this.apiHelper.getAllResultsFromPath(
+        screen.inScreenGroups,
+      );
 
-      if (Object.prototype.hasOwnProperty.call(response, "hydra:member")) {
+      if (Object.prototype.hasOwnProperty.call(response, "results")) {
         const promises = [];
 
-        response["hydra:member"].forEach((group) => {
+        response.results.forEach((group) => {
           promises.push(this.apiHelper.getAllResultsFromPath(group.campaigns));
         });
 
@@ -74,11 +77,11 @@ class PullStrategy {
     let screenCampaigns = [];
 
     try {
-      const screenCampaignsResponse = await this.apiHelper.getPath(
-        screen.campaigns,
-      );
+      // Paginated collection: fetch every page, not just the first.
+      const screenCampaignsResponse =
+        await this.apiHelper.getAllResultsFromPath(screen.campaigns);
 
-      screenCampaigns = screenCampaignsResponse["hydra:member"].map(
+      screenCampaigns = (screenCampaignsResponse.results ?? []).map(
         ({ campaign }) => campaign,
       );
     } catch (err) {
@@ -424,6 +427,10 @@ class PullStrategy {
 
   getPath(id) {
     return this.apiHelper.getPath(id);
+  }
+
+  getAllResultsFromPath(path, keys = {}) {
+    return this.apiHelper.getAllResultsFromPath(path, keys);
   }
 
   async getTemplateData(slide) {

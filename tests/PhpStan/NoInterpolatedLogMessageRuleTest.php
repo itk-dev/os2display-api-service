@@ -13,7 +13,7 @@ use PHPStan\Testing\RuleTestCase;
  */
 class NoInterpolatedLogMessageRuleTest extends RuleTestCase
 {
-    private const MESSAGE = 'Log message must be a static string; put variable data in the context '
+    private const string MESSAGE = 'Log message must be a static string; put variable data in the context '
         .'array instead (use "{placeholder}" braces resolved from context if you '
         .'need it inside the message).';
 

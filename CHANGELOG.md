@@ -4,10 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Made dev cert creation run on Linux.
+- Fixed the calendar template Playwright tests failing on the 31st of a month, where the fixed test
+  clock rolled over into the following month.
+- Fixed the API-spec workflow failing on pull requests from forks, where the informational PR comment
+  cannot be posted with a read-only token.
+- Fixed the missing cross-fade between slides in the screen client (#522).
+- Fixed `RelationsChecksumListenerTest::testPersistPlaylistScreenRegion` failing at random, where an
+  unordered fixture lookup collided with the unique constraint on a playlist/screen/region.
+- Fixed the "number of slides" button doing nothing in the admin playlist tables on the screen and
+  slide edit pages (#514).
+- Fixed screens losing their playlists and screen groups when the screen form was saved more than
+  once (#513).
+- Fixed landscape videos being cropped left and right on portrait screens (#511).
+
+## [3.0.0-rc8] - 2026-08-24
+
+- Removed the `app:utils:convert-config-json-to-env` command, superseded by 2.8's
+  `app:utils:convert-env-to-3x`, which already converts the admin/client `config.json` as part of the
+  full env export. Updated `UPGRADE.md` accordingly.
+- Fixed the screen client paging a collection without end when the API reported more items than it
+  returned; `getAllResultsFromPath` now follows `hydra:next`, with a 100-page backstop (#517).
+- Fixed three client paths that used only the first page of a paginated collection: a screen's screen
+  groups and campaigns, and the playlist preview slides.
+- Fixed nginx serving JSON-LD API responses uncompressed.
 - Made Vite honor the `COMPOSE_DOMAIN` environment variable.
 - Made the shell scripts in `scripts/` POSIX sh and added a ShellCheck CI gate, so bash-only
   syntax can no longer break developers whose `/bin/sh` is dash.
+- Made dev cert creation run on Linux.
+- Updated all Composer and npm dependencies, taking `composer audit` from 23 advisories to two and
+  `npm audit` from 17 to two; the four that remain need the API Platform 4 and React Router 7 majors.
+- Modernised `rector.php`: the PHP, Doctrine and Symfony rule sets derive from `composer.json` and
+  `composer.lock` instead of pinned constants Rector 2.6 removed, and class references are imported
+  rather than written inline.
+- Documented the three Mate log tools missing from `mate/AGENT_INSTRUCTIONS.md`.
+- Updated the GitHub Actions to their current releases.
 
 ## [3.0.0-rc7] - 2026-06-23
 

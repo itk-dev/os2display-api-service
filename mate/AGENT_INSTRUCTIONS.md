@@ -39,14 +39,21 @@ Never invoke `vendor/bin/mate` (or any `php`/`composer` command) directly on the
 
 Use MCP tools instead of CLI for log analysis:
 
-| Instead of...                     | Use                                              |
-|-----------------------------------|--------------------------------------------------|
-| `tail -f var/log/dev.log`         | `monolog-tail`                                   |
-| `grep "error" var/log/*.log`      | `monolog-search` with term "error"               |
-| `grep -E "pattern" var/log/*.log` | `monolog-search` with term "pattern", regex: true |
+| Instead of...                             | Use                                                    |
+|-------------------------------------------|--------------------------------------------------------|
+| `tail -f var/log/dev.log`                 | `monolog-tail`                                         |
+| `grep "error" var/log/*.log`              | `monolog-search` with term "error"                     |
+| `grep -E "pattern" var/log/*.log`         | `monolog-search` with term "pattern", regex: true      |
+| `grep '"trace_id":"abc"' var/log/*.log`   | `monolog-context-search` with key/value                |
+| `ls -la var/log/`                         | `monolog-list-files`                                   |
+| `jq -r .channel var/log/*.log \| sort -u` | `monolog-list-channels`                                |
 
 #### Benefits
 
 - Structured output with parsed log entries
 - Multi-file search across all logs at once
 - Filter by environment, level, or channel
+- `monolog-context-search` matches on the structured context fields the ADR 011 processors attach
+  (`trace_id`, `request_id`, identity, exception data) rather than on the rendered line
+- `monolog-list-channels` reports the per-domain channels actually present in a log set
+  (`app`, `security`, `database`, `outbound_http`, …), which is the quickest way to pick a filter

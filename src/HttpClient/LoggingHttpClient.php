@@ -11,7 +11,7 @@ use Symfony\Contracts\HttpClient\ResponseStreamInterface;
 
 class LoggingHttpClient implements HttpClientInterface
 {
-    private const REDACTED = '[redacted]';
+    private const string REDACTED = '[redacted]';
 
     public function __construct(
         private HttpClientInterface $client,

@@ -27,7 +27,7 @@ jobs:
     name: Lint compose (all modes)
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Default mode (traefik profile)
         env:
@@ -61,7 +61,7 @@ jobs:
       COMPOSE_PROFILES: traefik
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Generate dev cert
         run: bash scripts/dev-cert.sh
@@ -98,7 +98,7 @@ jobs:
     name: Smoke test (itkdev opt-in)
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Pre-create external frontend network
         run: docker network create frontend

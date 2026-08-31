@@ -24,7 +24,7 @@ class ConnectionErrorDriverTest extends TestCase
         $this->expectException(DriverException::class);
 
         try {
-            (new ConnectionErrorDriver($driver, new Logger('database', [$handler])))
+            new ConnectionErrorDriver($driver, new Logger('database', [$handler]))
                 ->connect(['host' => 'db.internal', 'password' => 's3cr3t', 'user' => 'app']);
         } finally {
             $records = $handler->getRecords();
@@ -55,7 +55,7 @@ class ConnectionErrorDriverTest extends TestCase
         $driver = $this->driverThrowing(1045, '28000'); // ER_ACCESS_DENIED_ERROR
 
         try {
-            (new ConnectionErrorDriver($driver, new Logger('database', [$handler])))
+            new ConnectionErrorDriver($driver, new Logger('database', [$handler]))
                 ->connect(['host' => 'db.internal']);
             $this->fail('Expected the driver exception to be rethrown.');
         } catch (DriverException) {
@@ -73,7 +73,7 @@ class ConnectionErrorDriverTest extends TestCase
         $driver = $this->createMock(Driver::class);
         $driver->method('connect')->willReturn($connection);
 
-        $result = (new ConnectionErrorDriver($driver, new Logger('database', [$handler])))
+        $result = new ConnectionErrorDriver($driver, new Logger('database', [$handler]))
             ->connect(['host' => 'db.internal']);
 
         // The wrapped connection passes through untouched and nothing is logged.
@@ -88,7 +88,7 @@ class ConnectionErrorDriverTest extends TestCase
         $driver = $this->driverThrowingException($exception);
 
         try {
-            (new ConnectionErrorDriver($driver, new Logger('database', [$handler])))
+            new ConnectionErrorDriver($driver, new Logger('database', [$handler]))
                 ->connect(['host' => 'db.internal']);
             $this->fail('Expected the driver exception to be rethrown.');
         } catch (DriverException $caught) {
@@ -109,7 +109,7 @@ class ConnectionErrorDriverTest extends TestCase
         $logger->method('log')->willThrowException(new \RuntimeException('log sink unavailable'));
 
         try {
-            (new ConnectionErrorDriver($driver, $logger))->connect(['host' => 'db.internal']);
+            new ConnectionErrorDriver($driver, $logger)->connect(['host' => 'db.internal']);
             $this->fail('Expected the driver exception to be rethrown.');
         } catch (\Throwable $caught) {
             // The real DB connection error wins; the logging failure is swallowed.

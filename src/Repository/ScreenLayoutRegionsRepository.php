@@ -14,7 +14,7 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method ScreenLayoutRegions[]    findAll()
  * @method ScreenLayoutRegions[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
- * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\ScreenLayoutRegions>
+ * @extends ServiceEntityRepository<ScreenLayoutRegions>
  */
 class ScreenLayoutRegionsRepository extends ServiceEntityRepository implements MultiTenantRepositoryInterface
 {

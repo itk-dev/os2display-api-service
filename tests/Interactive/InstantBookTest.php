@@ -7,8 +7,10 @@ namespace App\Tests\Interactive;
 use App\Entity\Tenant\Feed;
 use App\Entity\Tenant\FeedSource;
 use App\Exceptions\ConflictException;
+use App\Feed\CalendarApiFeedType;
 use App\Feed\FeedOutputModels;
 use App\Feed\FeedTypeInterface;
+use App\Feed\RssFeedType;
 use App\InteractiveSlide\InstantBook;
 use App\Service\FeedService;
 use App\Service\InteractiveSlideService;
@@ -82,7 +84,7 @@ class InstantBookTest extends KernelTestCase
 
         $instantBook = $this->buildInstantBookWithFeedData($events, FeedOutputModels::CALENDAR_OUTPUT);
 
-        $feed = $this->buildFeedWithSource(\App\Feed\CalendarApiFeedType::class);
+        $feed = $this->buildFeedWithSource(CalendarApiFeedType::class);
 
         $result = $this->invokePrivate($instantBook, 'getBusyIntervalsFromFeed', [$feed, ['a@example.com', 'b@example.com'], $from, $to]);
 
@@ -100,7 +102,7 @@ class InstantBookTest extends KernelTestCase
         $to = new \DateTime('2026-01-01T11:00:00', new \DateTimeZone('UTC'));
 
         $instantBook = $this->buildInstantBookWithFeedData([], FeedOutputModels::CALENDAR_OUTPUT);
-        $feed = $this->buildFeedWithSource(\App\Feed\CalendarApiFeedType::class);
+        $feed = $this->buildFeedWithSource(CalendarApiFeedType::class);
 
         $result = $this->invokePrivate($instantBook, 'getBusyIntervalsFromFeed', [$feed, ['a@example.com'], $from, $to]);
 
@@ -110,7 +112,7 @@ class InstantBookTest extends KernelTestCase
     public function testGetBusyIntervalsFromFeedRejectsNonCalendarFeed(): void
     {
         $instantBook = $this->buildInstantBookWithFeedData([], FeedOutputModels::RSS_OUTPUT);
-        $feed = $this->buildFeedWithSource(\App\Feed\RssFeedType::class);
+        $feed = $this->buildFeedWithSource(RssFeedType::class);
 
         $this->expectException(UnprocessableEntityHttpException::class);
 
@@ -166,9 +168,9 @@ class InstantBookTest extends KernelTestCase
 
     private function buildInstantBookWithFeedData(array $events, string $outputType): InstantBook
     {
-        $feedType = new class($outputType) implements FeedTypeInterface {
+        $feedType = new readonly class($outputType) implements FeedTypeInterface {
             public function __construct(
-                private readonly string $outputType,
+                private string $outputType,
             ) {}
 
             public function getData(Feed $feed): array

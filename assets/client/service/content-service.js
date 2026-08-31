@@ -221,11 +221,12 @@ class ContentService {
 
       const playlist = await pullStrategy.getPath(`/v2/playlists/${id}`);
 
-      const playlistSlidesResponse = await pullStrategy.getPath(
+      // Paginated collection: fetch every page, not just the first.
+      const playlistSlidesResponse = await pullStrategy.getAllResultsFromPath(
         playlist.slides,
       );
 
-      playlist.slidesData = playlistSlidesResponse["hydra:member"].map(
+      playlist.slidesData = (playlistSlidesResponse.results ?? []).map(
         (playlistSlide) => playlistSlide.slide,
       );
 

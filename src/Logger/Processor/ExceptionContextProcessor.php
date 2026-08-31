@@ -15,7 +15,7 @@ use Monolog\Processor\ProcessorInterface;
  */
 final class ExceptionContextProcessor implements ProcessorInterface
 {
-    private const MAX_DEPTH = 5;
+    private const int MAX_DEPTH = 5;
 
     public function __invoke(LogRecord $record): LogRecord
     {

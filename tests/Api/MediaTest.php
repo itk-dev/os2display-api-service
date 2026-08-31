@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Api;
 
 use App\Entity\Tenant;
+use App\Entity\Tenant\Media;
 use App\Tests\AbstractBaseApiTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -43,13 +44,13 @@ class MediaTest extends AbstractBaseApiTestCase
 
         // Check visibility between tenants - One Tenant should not see media from another tenant
         $tenantXyz = $manager->getRepository(Tenant::class)->findOneBy(['tenantKey' => 'XYZ']);
-        $iriXyz = $this->findIriBy(Tenant\Media::class, ['tenant' => $tenantXyz]);
+        $iriXyz = $this->findIriBy(Media::class, ['tenant' => $tenantXyz]);
 
         $client->request('GET', $iriXyz, ['headers' => ['Content-Type' => 'application/ld+json']]);
         $this->assertResponseStatusCodeSame(404, 'One Tenant should not see media from another tenant');
 
         // Tenant should see own media
-        $iri = $this->findIriBy(Tenant\Media::class, ['tenant' => $this->tenant]);
+        $iri = $this->findIriBy(Media::class, ['tenant' => $this->tenant]);
 
         $client->request('GET', $iri, ['headers' => ['Content-Type' => 'application/ld+json']]);
 
@@ -79,7 +80,7 @@ class MediaTest extends AbstractBaseApiTestCase
 
     public function testMediaUrlFromForeignTenant(): void
     {
-        $iri = $this->findIriBy(Tenant\Media::class, ['title' => 'media_def_shared_to_abc']);
+        $iri = $this->findIriBy(Media::class, ['title' => 'media_def_shared_to_abc']);
 
         $response = $this->getAuthenticatedClient()->request('GET', $iri, ['headers' => ['Content-Type' => 'application/ld+json']]);
 

@@ -10,6 +10,7 @@ use App\Utils\ValidationUtils;
 use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Uid\Ulid;
 
@@ -37,7 +38,7 @@ class ScreenGroupsScreensPutController extends AbstractTenantAwareController
 
         $this->screenGroupRepository->updateRelations($screenUlid, $collection, $this->getActiveTenant());
 
-        return new JsonResponse(null, \Symfony\Component\HttpFoundation\Response::HTTP_CREATED);
+        return new JsonResponse(null, Response::HTTP_CREATED);
     }
 
     /**

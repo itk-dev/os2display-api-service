@@ -22,7 +22,7 @@ use Symfony\Component\Uid\Ulid;
  * @method ScreenCampaign[]    findAll()
  * @method ScreenCampaign[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
- * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\Tenant\ScreenCampaign>
+ * @extends ServiceEntityRepository<ScreenCampaign>
  */
 class ScreenCampaignRepository extends ServiceEntityRepository
 {

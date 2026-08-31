@@ -17,7 +17,7 @@ use Symfony\Component\Uid\Ulid;
  * @method Slide[]    findAll()
  * @method Slide[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
- * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\Tenant\Slide>
+ * @extends ServiceEntityRepository<Slide>
  */
 class SlideRepository extends ServiceEntityRepository
 {

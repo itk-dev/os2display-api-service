@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
   clock rolled over into the following month.
 - Fixed the API-spec workflow failing on pull requests from forks, where the informational PR comment
   cannot be posted with a read-only token.
+- Fixed screens losing their playlists and screen groups when the screen form was saved more than
+  once (#513).
 - Fixed landscape videos being cropped left and right on portrait screens (#511).
 
 ## [3.0.0-rc8] - 2026-08-24

@@ -6,10 +6,23 @@ import appStorage from "../util/app-storage";
 // emitted while the backend is busy or restarting.
 const RETRYABLE_STATUSES = [429, 502, 503, 504];
 
-// Delays in ms before attempt 2, 3 and 4. A screen client on a multi region
-// layout issues a burst of requests per pull, so a rejected request must be
-// spread out rather than repeated immediately.
-const RETRY_DELAYS = [250, 500, 1000];
+// Number of retries after the initial attempt.
+const MAX_RETRIES = 3;
+
+// Base for the exponential backoff, in ms. The actual wait is a random value in
+// [0, base * 2^attempt] - "full jitter". A screen pull is a burst of requests
+// that all fail together when the rate-limit bucket is empty, and a narrow
+// jitter band would let them retry in near-lockstep and empty it again.
+const RETRY_BASE_DELAY = 500;
+
+// Ceiling for a single backoff wait, and for a Retry-After the server sends.
+// Without a clamp a proxy answering `Retry-After: 3600` would park the client
+// for an hour inside a poll that runs every few minutes.
+const MAX_RETRY_DELAY = 30000;
+
+// Give up on a single request after this long. A socket that never answers
+// neither fails nor retries, which is the one case backoff cannot help.
+const REQUEST_TIMEOUT = 15000;
 
 // Backstop so a misbehaving collection cannot page indefinitely. Matches the
 // limit used by the admin's get-all-pages helper.
@@ -47,17 +60,22 @@ class ApiHelper {
    * @returns {number} Milliseconds to wait.
    */
   static retryDelay(response, attempt) {
+    // Retry-After may also be an HTTP-date, which parseInt turns into NaN. That
+    // falls through to the backoff below, which is an acceptable degradation.
     const retryAfter = parseInt(
       response?.headers?.get?.("Retry-After") ?? "",
       10,
     );
 
     if (!Number.isNaN(retryAfter) && retryAfter > 0) {
-      return retryAfter * 1000;
+      return Math.min(retryAfter * 1000, MAX_RETRY_DELAY);
     }
 
-    // Add jitter to avoid all regions retrying in lockstep.
-    return RETRY_DELAYS[attempt] + Math.floor(Math.random() * 250);
+    // Full jitter: anywhere in [0, capped]. Spreads a burst that was rejected
+    // together instead of moving it forward intact.
+    const capped = Math.min(MAX_RETRY_DELAY, RETRY_BASE_DELAY * 2 ** attempt);
+
+    return Math.floor(Math.random() * capped);
   }
 
   /**
@@ -75,10 +93,12 @@ class ApiHelper {
     }
 
     /* eslint-disable no-await-in-loop */
-    for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt += 1) {
+    for (let attempt = 0; ; attempt += 1) {
       const result = await this.fetchPath(path);
 
-      if (result.retry === false || attempt === RETRY_DELAYS.length) {
+      // Anything not explicitly marked retryable is final, so a result that
+      // forgot to set the flag fails rather than being retried.
+      if (!result.retry || attempt === MAX_RETRIES) {
         return result.data;
       }
 
@@ -89,8 +109,6 @@ class ApiHelper {
       await ApiHelper.delay(ApiHelper.retryDelay(result.response, attempt));
     }
     /* eslint-enable no-await-in-loop */
-
-    return null;
   }
 
   /**
@@ -100,14 +118,14 @@ class ApiHelper {
    * @returns {Promise<object>} The data, and whether a retry makes sense.
    */
   async fetchPath(path) {
-    let response;
+    let headers;
 
+    // Credential and URL lookup is local work: if it fails, it fails the same
+    // way on every attempt, so it must not be inside the retried block.
     try {
       const url = new URL(window.location.href);
       const previewToken = url.searchParams.get("preview-token");
       const previewTenant = url.searchParams.get("preview-tenant");
-
-      logger.log("info", `Fetching: ${this.endpoint + path}`);
 
       const token = appStorage.getToken();
       const tenantKey = appStorage.getTenantKey();
@@ -118,45 +136,73 @@ class ApiHelper {
         return { data: null, retry: false };
       }
 
-      response = await fetch(this.endpoint + path, {
-        headers: {
-          authorization: `Bearer ${previewToken ?? token}`,
-          "Authorization-Tenant-Key": previewTenant ?? tenantKey,
-        },
-      });
-
-      if (response.ok === false) {
-        // TODO: Change to a better strategy for triggering reauthenticate.
-        if (response.status === 401) {
-          document.dispatchEvent(new Event("reauthenticate"));
-        }
-
-        logger.error(
-          `Failed to fetch (status: ${response.status}): ${
-            this.endpoint + path
-          }`,
-        );
-
-        return {
-          data: null,
-          retry: RETRYABLE_STATUSES.includes(response.status),
-          status: response.status,
-          response,
-        };
-      }
-
-      try {
-        return { data: await response.json(), retry: false };
-      } catch (parseError) {
-        // A body we cannot parse will not parse on a retry either.
-        logger.error(`Failed to parse response: ${this.endpoint + path}`);
-
-        return { data: null, retry: false };
-      }
+      headers = {
+        authorization: `Bearer ${previewToken ?? token}`,
+        "Authorization-Tenant-Key": previewTenant ?? tenantKey,
+      };
     } catch (err) {
-      logger.error(`Failed to fetch: ${this.endpoint + path}`);
+      logger.error(
+        `Could not build request for ${this.endpoint + path}: ${err.message}`,
+      );
 
+      return { data: null, retry: false };
+    }
+
+    logger.log("info", `Fetching: ${this.endpoint + path}`);
+
+    // A request that never answers would otherwise sit in Promise.allSettled
+    // forever, holding a worker and stalling the pull.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+    let response;
+
+    try {
+      response = await fetch(this.endpoint + path, {
+        headers,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      const timedOut = err.name === "AbortError";
+
+      logger.error(
+        timedOut
+          ? `Timed out after ${REQUEST_TIMEOUT}ms: ${this.endpoint + path}`
+          : `Failed to fetch ${this.endpoint + path}: ${err.message}`,
+      );
+
+      // A transport error and a timeout are both worth another attempt.
       return { data: null, retry: true, status: null, response: null };
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (response.ok === false) {
+      // TODO: Change to a better strategy for triggering reauthenticate.
+      if (response.status === 401) {
+        document.dispatchEvent(new Event("reauthenticate"));
+      }
+
+      logger.error(
+        `Failed to fetch (status: ${response.status}): ${this.endpoint + path}`,
+      );
+
+      return {
+        data: null,
+        retry: RETRYABLE_STATUSES.includes(response.status),
+        status: response.status,
+        response,
+      };
+    }
+
+    try {
+      return { data: await response.json(), retry: false };
+    } catch (parseError) {
+      // A body we cannot parse will not parse on a retry either.
+      logger.error(
+        `Failed to parse response from ${this.endpoint + path}: ${parseError.message}`,
+      );
+
+      return { data: null, retry: false };
     }
   }
 

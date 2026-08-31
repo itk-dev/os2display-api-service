@@ -19,7 +19,8 @@ All notable changes to this project will be documented in this file.
 - Fixed nginx rate limiting rejecting screen client API requests, which left regions randomly blank
   on multi-region layouts (#507). The limit is operator-tunable via `NGINX_RATE_LIMIT` /
   `NGINX_RATE_LIMIT_BURST` and answers `429` instead of `503`.
-- Made the screen client retry throttled and temporarily failing API requests with backoff (#507).
+- Made the screen client retry throttled and temporarily failing API requests with backoff, and
+  bounded how many requests one pull may have in flight (#507).
 
 ## [3.0.0-rc8] - 2026-08-24
 

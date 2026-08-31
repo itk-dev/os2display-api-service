@@ -19,9 +19,11 @@ import PullStrategy from "../../client/data-sync/pull-strategy";
 const SCREEN = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const REGION_A = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
 const REGION_B = "01CRZ3NDEKTSV4RRFFQ69G5FAV";
+const REGION_C = "01DRZ3NDEKTSV4RRFFQ69G5FAV";
 
 const pathA = `/v2/screens/${SCREEN}/regions/${REGION_A}/playlists`;
 const pathB = `/v2/screens/${SCREEN}/regions/${REGION_B}/playlists`;
+const pathC = `/v2/screens/${SCREEN}/regions/${REGION_C}/playlists`;
 
 describe("PullStrategy.getRegions with a failed region request", () => {
   beforeEach(() => {
@@ -68,5 +70,56 @@ describe("PullStrategy.getRegions with a failed region request", () => {
     const regionData = await strategy.getRegions([pathA, pathB]);
 
     expect(Object.keys(regionData).sort()).toEqual([REGION_A, REGION_B].sort());
+  });
+
+  it("keeps the previously loaded playlists when a region request fails", async () => {
+    // Stale content beats a black region on signage. A rejected request says
+    // nothing about what the region should show, so the last known good
+    // playlists stay until a pull actually succeeds.
+    const previous = [{ "@id": "/v2/playlists/9", title: "still showing" }];
+
+    mockGetAllResultsFromPath.mockResolvedValue({});
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: "" });
+    strategy.lastestScreenData = { regionData: { [REGION_A]: previous } };
+
+    const regionData = await strategy.getRegions([pathA]);
+
+    expect(regionData[REGION_A]).toEqual(previous);
+  });
+
+  it("attaches each region's playlists to the right region when a middle one fails", async () => {
+    // Results are matched to regions structurally. If they were matched by
+    // position and the list could drift, a region would show another region's
+    // playlists — worse than showing nothing.
+    mockGetAllResultsFromPath.mockImplementation((regionPath) => {
+      if (regionPath === pathB) {
+        return Promise.reject(new Error("throttled"));
+      }
+
+      const id = regionPath === pathA ? "A" : "C";
+
+      return Promise.resolve({
+        path: regionPath,
+        results: [{ playlist: { "@id": `/v2/playlists/${id}`, title: id } }],
+        keys: {},
+      });
+    });
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: "" });
+    const regionData = await strategy.getRegions([pathA, pathB, pathC]);
+
+    expect(regionData[REGION_A][0].title).toBe("A");
+    expect(regionData[REGION_C][0].title).toBe("C");
+    expect(regionData[REGION_B]).toEqual([]);
+  });
+
+  it("skips a path that is not a region playlists path", async () => {
+    mockGetAllResultsFromPath.mockResolvedValue({ path: pathA, results: [] });
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: "" });
+    const regionData = await strategy.getRegions([pathA, "/v2/not-a-region"]);
+
+    expect(Object.keys(regionData)).toEqual([REGION_A]);
   });
 });

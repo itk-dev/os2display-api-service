@@ -128,4 +128,125 @@ describe("ApiHelper.getPath retries throttled requests", () => {
     expect(result).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("honours Retry-After from the response", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: new Headers({ "Retry-After": "5" }),
+      })
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ "@id": MEDIA_PATH }),
+      });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const promise = new ApiHelper("").getPath(MEDIA_PATH);
+
+    // Not yet: the server asked for five seconds.
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    await expect(resolveWithTimers(promise)).resolves.toEqual({
+      "@id": MEDIA_PATH,
+    });
+  });
+
+  it("clamps an unreasonable Retry-After", async () => {
+    // A CDN or maintenance page in front of nginx can answer with an hour.
+    // Honouring that verbatim would park the screen for the rest of the day.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        headers: new Headers({ "Retry-After": "3600" }),
+      })
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ "@id": MEDIA_PATH }),
+      });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const promise = new ApiHelper("").getPath(MEDIA_PATH);
+
+    // The clamp is 30s, so the retry must have happened well inside the hour.
+    await vi.advanceTimersByTimeAsync(31000);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    await expect(resolveWithTimers(promise)).resolves.toEqual({
+      "@id": MEDIA_PATH,
+    });
+  });
+
+  it("keeps every backoff wait inside the cap", async () => {
+    // Full jitter picks anywhere in [0, cap]; with Math.random pinned high the
+    // longest possible wait must still be under the ceiling, or a screen could
+    // stall past its own pull interval.
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: false, status: 503, headers: new Headers() });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const promise = new ApiHelper("").getPath(MEDIA_PATH);
+
+    // 3 retries, each capped at 30s, so everything is done inside 90s.
+    await vi.advanceTimersByTimeAsync(90000);
+
+    await expect(promise).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+
+    Math.random.mockRestore();
+  });
+
+  it("retries a request that times out", async () => {
+    // A socket that never answers is the one case backoff cannot help, so the
+    // request has to be aborted rather than held open.
+    const abortError = new Error("The operation was aborted.");
+    abortError.name = "AbortError";
+
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(abortError)
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ "@id": MEDIA_PATH }),
+      });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolveWithTimers(
+      new ApiHelper("").getPath(MEDIA_PATH),
+    );
+
+    expect(result).toEqual({ "@id": MEDIA_PATH });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry when no credentials are stored", async () => {
+    // Local state, not a transport problem: it fails identically every time.
+    localStorage.clear();
+
+    const fetchMock = vi.fn();
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      resolveWithTimers(new ApiHelper("").getPath(MEDIA_PATH)),
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

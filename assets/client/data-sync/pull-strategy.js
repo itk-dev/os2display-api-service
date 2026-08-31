@@ -3,6 +3,14 @@ import logger from "../logger/logger";
 import ApiHelper from "./api-helper";
 import { cloneDeep } from "lodash";
 import ClientConfigLoader from "../util/client-config-loader.js";
+import { settleWithConcurrency } from "../util/concurrency.js";
+
+// Maximum requests in flight during a pull. A multi-region layout fans out one
+// request per region, playlist, slide, template, media item and feed; sending
+// all of them at once is what empties the reverse proxy's rate-limit bucket and
+// leaves regions blank (#507). Keeping the burst well under the configured
+// burst size means the retry layer rarely has to do anything.
+const MAX_CONCURRENT_REQUESTS = 6;
 
 /**
  * PullStrategy.
@@ -54,20 +62,22 @@ class PullStrategy {
       );
 
       if (Object.prototype.hasOwnProperty.call(response, "results")) {
-        const promises = [];
+        const tasks = response.results.map(
+          (group) => () =>
+            this.apiHelper.getAllResultsFromPath(group.campaigns),
+        );
 
-        response.results.forEach((group) => {
-          promises.push(this.apiHelper.getAllResultsFromPath(group.campaigns));
-        });
+        const results = await settleWithConcurrency(
+          tasks,
+          MAX_CONCURRENT_REQUESTS,
+        );
 
-        await Promise.allSettled(promises).then((results) => {
-          results.forEach((result) => {
-            if (result.status === "fulfilled") {
-              result.value.results.forEach(({ campaign }) => {
-                screenGroupCampaigns.push(campaign);
-              });
-            }
-          });
+        results.forEach((result) => {
+          if (result.status === "fulfilled") {
+            (result.value.results ?? []).forEach(({ campaign }) => {
+              screenGroupCampaigns.push(campaign);
+            });
+          }
         });
       }
     } catch (err) {
@@ -102,48 +112,62 @@ class PullStrategy {
   async getRegions(regions) {
     const reg = /\/v2\/screens\/.*\/regions\/(?<regionId>.*)\/playlists/;
 
-    return new Promise((resolve, reject) => {
-      const promises = [];
-      const regionData = {};
+    // Pair each region id with its request up front. Reading the id back out of
+    // a positional index would depend on this list staying 1:1 with `regions`,
+    // and mismatched playlists on a region are worse than a missing region.
+    const entries = regions
+      .map((regionPath) => ({
+        regionPath,
+        regionId: regionPath?.match(reg)?.groups?.regionId,
+      }))
+      .filter(({ regionId }) => regionId !== undefined);
 
-      regions.forEach((regionPath) => {
-        promises.push(this.apiHelper.getAllResultsFromPath(regionPath));
-      });
+    const results = await settleWithConcurrency(
+      entries.map(
+        ({ regionPath }) =>
+          () =>
+            this.apiHelper.getAllResultsFromPath(regionPath),
+      ),
+      MAX_CONCURRENT_REQUESTS,
+    );
 
-      Promise.allSettled(promises)
-        .then((results) => {
-          results.forEach((result, index) => {
-            // Resolve the region id from the requested path, not the
-            // response: a failed request carries no path, and the region
-            // would then silently disappear from the screen.
-            const regionPath = regions[index];
-            const matches = regionPath?.match(reg) ?? [];
+    const regionData = {};
 
-            if (!matches?.groups?.regionId) {
-              return;
-            }
+    results.forEach((result, index) => {
+      const { regionId } = entries[index];
 
-            const { regionId } = matches.groups;
+      if (result.status === "fulfilled" && result?.value?.path) {
+        regionData[regionId] = (result?.value?.results ?? []).map(
+          ({ playlist }) => playlist,
+        );
 
-            if (result.status === "fulfilled" && result?.value?.path) {
-              regionData[regionId] = (result?.value?.results ?? []).map(
-                ({ playlist }) => playlist,
-              );
+        return;
+      }
 
-              return;
-            }
+      // Keep the last known good playlists for this region rather than an empty
+      // list. On signage, content that is one pull out of date beats a black
+      // region, and a rejected request says nothing about what should be shown.
+      const previous = this.lastestScreenData?.regionData?.[regionId];
 
-            logger.warn(
-              `Could not load playlists for region ${regionId}. Keeping the region without content.`,
-            );
+      if (previous !== undefined) {
+        logger.warn(
+          `Could not load playlists for region ${regionId}. Keeping the previously loaded content.`,
+        );
 
-            regionData[regionId] = [];
-          });
+        regionData[regionId] = previous;
 
-          resolve(regionData);
-        })
-        .catch((err) => reject(err));
+        return;
+      }
+
+      // Nothing to fall back to: this is the first pull for the region.
+      logger.warn(
+        `Could not load playlists for region ${regionId} and have no earlier content for it.`,
+      );
+
+      regionData[regionId] = [];
     });
+
+    return regionData;
   }
 
   /**
@@ -153,46 +177,50 @@ class PullStrategy {
    * @returns {Promise<object>} Promise with slides for the given regions.
    */
   async getSlidesForRegions(regions) {
-    return new Promise((resolve, reject) => {
-      const promises = [];
-      const regionData = cloneDeep(regions);
+    const regionData = cloneDeep(regions);
+    const entries = [];
 
-      // @TODO: Fix eslint-raised issues.
-      // eslint-disable-next-line guard-for-in,no-restricted-syntax
-      for (const regionKey in regionData) {
-        const playlists = regionData[regionKey];
-        // eslint-disable-next-line guard-for-in,no-restricted-syntax
-        for (const playlistKey in playlists) {
-          promises.push(
+    Object.keys(regionData).forEach((regionKey) => {
+      Object.keys(regionData[regionKey]).forEach((playlistKey) => {
+        entries.push({ regionKey, playlistKey });
+      });
+    });
+
+    // The widest fan-out in a pull: one request per playlist per region. Bounded
+    // so a screen with many regions does not open them all at once (#507).
+    const results = await settleWithConcurrency(
+      entries.map(
+        ({ regionKey, playlistKey }) =>
+          () =>
             this.apiHelper.getAllResultsFromPath(
               regionData[regionKey][playlistKey].slides,
-              {
-                regionKey,
-                playlistKey,
-              },
             ),
-          );
-        }
+      ),
+      MAX_CONCURRENT_REQUESTS,
+    );
+
+    results.forEach((result, index) => {
+      const { regionKey, playlistKey } = entries[index];
+
+      if (
+        result.status !== "fulfilled" ||
+        result.value?.results === undefined
+      ) {
+        // Leave slidesData alone: cloneDeep kept whatever the previous pull
+        // attached, which is better than an empty playlist.
+        logger.warn(
+          `Could not load slides for playlist ${playlistKey} in region ${regionKey}.`,
+        );
+
+        return;
       }
 
-      Promise.allSettled(promises)
-        .then((results) => {
-          results.forEach((result) => {
-            if (
-              result.status === "fulfilled" &&
-              Object.prototype.hasOwnProperty.call(result.value, "keys")
-            ) {
-              regionData[result.value.keys.regionKey][
-                result.value.keys.playlistKey
-              ].slidesData = result.value.results.map(
-                (playlistSlide) => playlistSlide.slide,
-              );
-            }
-          });
-          resolve(regionData);
-        })
-        .catch((err) => reject(err));
+      regionData[regionKey][playlistKey].slidesData = result.value.results.map(
+        (playlistSlide) => playlistSlide.slide,
+      );
     });
+
+    return regionData;
   }
 
   /**

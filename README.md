@@ -757,12 +757,22 @@ a burst of one request per region, playlist, slide, template, media and feed —
 requests within a couple of seconds. Setting the limit too low makes regions and images randomly fail to
 render.
 
+The burst is configured with `nodelay`, so requests beyond it are **rejected with `429` immediately**
+rather than queued. That is deliberate: queueing 500 requests at `100r/s` would add up to five seconds of
+latency and risk upstream read timeouts, which is harder to diagnose than a clean rejection the client
+can retry. If you change this to a delayed burst, expect latency rather than errors under load.
+
+The screen client bounds its own fan-out (six requests in flight) and retries `429`, `502`, `503` and
+`504` with exponential backoff and full jitter, honouring `Retry-After` up to 30 seconds. The two
+mechanisms are meant to work together: the client keeps the burst small, and the limit is the backstop.
+
 The zone is keyed on the client address, so every screen behind the same NAT shares one bucket. Note also
 that `NGINX_SET_REAL_IP_FROM` (default `172.16.0.0/12`) must cover your load balancer, or nginx never
 restores the real client address and the limit becomes installation-wide.
 
 Both variables are substituted into the nginx config at container start; leaving one undefined produces an
-invalid config and nginx refuses to start.
+invalid config and nginx refuses to start. The official image carries defaults, so this only bites a stack
+that runs a vanilla nginx image and sets `environment:` itself — see `UPGRADE.md`.
 
 ### Other configuration options
 

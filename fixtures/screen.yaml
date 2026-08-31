@@ -23,6 +23,16 @@ App\Entity\Tenant\Screen:
     title: "screen_abc_<current()>"
     screenLayout: "@screen_layout_id_full"
     tenant: "@tenant_abc"
+  # Reserved for RelationsChecksumListenerTest::testPersistPlaylistScreenRegion,
+  # which persists a PlaylistScreenRegion of its own. Deliberately absent from
+  # fixtures/playlist_screen_region.yaml: the unique constraint on
+  # (playlist, screen, region) means the test can only insert a row for a screen
+  # that does not already have one. Do not add a playlist_screen_region row for
+  # this screen, and do not pair it in that file.
+  screen_abc_6 (extends screen):
+    title: "screen_abc_6"
+    screenLayout: "@screen_layout_id_full"
+    tenant: "@tenant_abc"
   screen_abc_two_boxes_layout_{1..5} (extends screen):
     title: "screen_abc_two_boxes_layout_<current()>"
     screenLayout: "@screen_layout_id_two_boxes"

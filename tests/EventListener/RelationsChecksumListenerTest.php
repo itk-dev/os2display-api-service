@@ -383,8 +383,21 @@ class RelationsChecksumListenerTest extends KernelTestCase
     public function testPersistPlaylistScreenRegion(): void
     {
         $tenant = $this->em->getRepository(Tenant::class)->findOneBy(['tenantKey' => 'ABC']);
-        $playlist = $this->em->getRepository(Playlist::class)->findOneBy(['tenant' => $tenant]);
-        $screen = $this->em->getRepository(Screen::class)->findOneBy(['tenant' => $tenant]);
+
+        // Address the fixtures by title rather than taking whatever findOneBy()
+        // returns for the tenant. PlaylistScreenRegion is unique on
+        // (playlist, screen, region), and the fixtures already pair
+        // playlist_abc_N with screen_abc_N, so an unordered lookup landed on an
+        // existing pair often enough to fail this test at random - and returned
+        // different rows on MariaDB 10.11 than on 11.4. playlist_abc_6 and
+        // screen_abc_6 are reserved for this test and have no
+        // playlist_screen_region row of their own.
+        $playlist = $this->em->getRepository(Playlist::class)->findOneBy(['title' => 'playlist_abc_6']);
+        $screen = $this->em->getRepository(Screen::class)->findOneBy(['title' => 'screen_abc_6']);
+
+        $this->assertNotNull($playlist, 'Fixture playlist_abc_6 is missing.');
+        $this->assertNotNull($screen, 'Fixture screen_abc_6 is missing.');
+
         $layout = $screen->getScreenLayout();
         $region = $layout->getRegions()->first();
 

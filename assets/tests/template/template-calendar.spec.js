@@ -1,12 +1,15 @@
 import { test, expect } from "@playwright/test";
 
 // Fixed time since the calendar template filters events older than now.
+//
+// Built in one go rather than by mutating today's date: setMonth() applied
+// before setDate() keeps the current day-of-month, and on the 31st that day
+// does not exist in the target month, so the date rolls into the next one
+// (31 August + setMonth(8) = 1 October). That moved the "fixed" clock to
+// 15 October on the 31st of every 31-day month, failing the assertions below
+// that expect September.
 const fixTime = async (page) => {
-  const newDate = new Date();
-  newDate.setMonth(8);
-  newDate.setDate(15);
-  newDate.setHours(6);
-  newDate.setMinutes(0);
+  const newDate = new Date(new Date().getFullYear(), 8, 15, 6, 0, 0);
   await page.clock.install({ time: newDate });
 };
 

@@ -48,7 +48,7 @@ function Video({ slide, content, run, slideDone, executionId }) {
   const videoUrls = getAllMediaUrlsFromField(slide.mediaData, content.video);
   const videoRef = useRef();
   const doneRef = useRef(false);
-  const { sound, mediaContain } = content;
+  const { sound, mediaContain = true } = content;
 
   const finish = () => {
     if (!doneRef.current) {

@@ -44,6 +44,7 @@ function ScreenManager({
 }) {
   const { t } = useTranslation("common", { keyPrefix: "screen-manager" });
   const saveWithoutCloseRef = useRef(false);
+  const initialisedForRef = useRef(undefined);
   const navigate = useNavigate();
   const headerText =
     saveMethod === "PUT" ? t("edit-screen-header") : t("create-screen-header");
@@ -87,14 +88,27 @@ function ScreenManager({
    * @param {object} props.target - Event target.
    */
   const handleInput = ({ target }) => {
-    const localFormStateObject = JSON.parse(JSON.stringify(formStateObject));
-    set(localFormStateObject, target.id, target.value);
-    setFormStateObject(localFormStateObject);
+    setFormStateObject((previousFormStateObject) => {
+      const localFormStateObject = JSON.parse(
+        JSON.stringify(previousFormStateObject),
+      );
+      set(localFormStateObject, target.id, target.value);
+      return localFormStateObject;
+    });
   };
 
-  /** Set loaded data into form state. */
+  /**
+   * Set loaded data into form state. Only done once per screen: saving
+   * invalidates the Screens tag, and the refetched screen would otherwise
+   * replace the form state and drop the relations (playlists, inScreenGroups)
+   * that the child components have injected into it.
+   */
   useEffect(() => {
-    if (initialState) {
+    const initialStateId = initialState?.["@id"] ?? null;
+
+    if (initialState && initialisedForRef.current !== initialStateId) {
+      initialisedForRef.current = initialStateId;
+
       const localFormStateObject = JSON.parse(JSON.stringify(initialState));
       if (localFormStateObject.orientation) {
         localFormStateObject.orientation = orientationOptions.filter(
@@ -116,7 +130,9 @@ function ScreenManager({
   /**
    * Map group ids for submitting.
    *
-   * @returns {Array | null} A mapped array with group ids or null
+   * @returns {Array | undefined} A mapped array with group ids, or undefined if
+   *   the form does not hold the groups. Undefined keys are left out of the
+   *   payload, so the existing groups are kept instead of being detached.
    */
   function mapGroups(screenState) {
     if (screenState?.inScreenGroups instanceof Array) {
@@ -124,7 +140,7 @@ function ScreenManager({
         return idFromUrl(group);
       });
     }
-    return [];
+    return undefined;
   }
 
   /**
@@ -156,9 +172,16 @@ function ScreenManager({
   /**
    * Map playlists with regions and weight for submitting.
    *
-   * @returns {Array | null} A mapped array with playlist, regions and weight or null
+   * @returns {Array | undefined} A mapped array with playlist, regions and
+   *   weight, or undefined if the form does not hold the playlists. Undefined
+   *   keys are left out of the payload, so the existing region playlists are
+   *   kept instead of being cleared.
    */
   function mapPlaylistsWithRegion(playlists, regions) {
+    if (!(playlists instanceof Array) || !(regions instanceof Array)) {
+      return undefined;
+    }
+
     const returnArray = [];
     const regionIds = regions.map((r) =>
       typeof r === "string" ? idFromUrl(r, 1) : idFromUrl(r["@id"]),

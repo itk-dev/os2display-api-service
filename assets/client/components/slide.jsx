@@ -12,9 +12,11 @@ import "./slide.scss";
  * @param {string} props.run - Timestamp for when to run the slide.
  * @param {Function} props.slideDone - The function to call when the slide is done running.
  * @param {Function} props.slideError - Callback when slide encountered an error.
+ * @param {object} props.forwardRef - Ref to the slide root element. Used as
+ *   nodeRef by the region's CSSTransition.
  * @returns {object} - The component.
  */
-function Slide({ slide, id, run, slideDone, slideError }) {
+function Slide({ slide, id, run, slideDone, slideError, forwardRef }) {
   /**
    * Handle errors in ErrorBoundary.
    *
@@ -30,6 +32,7 @@ function Slide({ slide, id, run, slideDone, slideError }) {
 
   return (
     <div
+      ref={forwardRef}
       id={id}
       className="slide"
       data-run={run}

@@ -115,4 +115,40 @@ describe("useBaseSlideExecution", () => {
     expect(firstSlideDone).not.toHaveBeenCalled();
     expect(secondSlideDone).toHaveBeenCalledExactlyOnceWith(SLIDE);
   });
+
+  it("restarts the timer when run changes to a new truthy value", () => {
+    const slideDone = vi.fn();
+
+    const { rerender } = renderHook(
+      ({ run }) =>
+        useBaseSlideExecution({ slide: SLIDE, run, slideDone, duration: 5000 }),
+      { initialProps: { run: 1 } },
+    );
+
+    act(() => vi.advanceTimersByTime(5000));
+    expect(slideDone).toHaveBeenCalledTimes(1);
+
+    // A region holding a single slide replays it without remounting, so the
+    // only signal that the slide should run again is a new run value.
+    rerender({ run: 2 });
+
+    act(() => vi.advanceTimersByTime(5000));
+    expect(slideDone).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not restart the timer when run is unchanged", () => {
+    const slideDone = vi.fn();
+
+    const { rerender } = renderHook(
+      ({ run }) =>
+        useBaseSlideExecution({ slide: SLIDE, run, slideDone, duration: 5000 }),
+      { initialProps: { run: 1 } },
+    );
+
+    act(() => vi.advanceTimersByTime(5000));
+    rerender({ run: 1 });
+    act(() => vi.advanceTimersByTime(60000));
+
+    expect(slideDone).toHaveBeenCalledTimes(1);
+  });
 });

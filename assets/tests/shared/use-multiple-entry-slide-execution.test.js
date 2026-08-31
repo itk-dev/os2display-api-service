@@ -147,4 +147,23 @@ describe("useMultipleEntrySlideExecution", () => {
     expect(firstSlideDone).not.toHaveBeenCalled();
     expect(secondSlideDone).toHaveBeenCalledExactlyOnceWith(SLIDE);
   });
+
+  it("restarts the cycle when run changes to a new truthy value", () => {
+    const slideDone = vi.fn();
+    const { result, rerender } = render({ slideDone, run: 1 });
+
+    // Cycle all the way through the entries.
+    act(() => vi.advanceTimersByTime(3000));
+    expect(slideDone).toHaveBeenCalledTimes(1);
+
+    // A region holding a single slide replays it without remounting, so the
+    // only signal that the slide should run again is a new run value.
+    rerender({ run: 2 });
+
+    expect(result.current.entryIndex).toBe(0);
+    expect(result.current.currentEntry).toBe(ENTRIES[0]);
+
+    act(() => vi.advanceTimersByTime(3000));
+    expect(slideDone).toHaveBeenCalledTimes(2);
+  });
 });

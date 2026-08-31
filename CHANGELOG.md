@@ -28,6 +28,8 @@ All notable changes to this project will be documented in this file.
   groups and campaigns, and the playlist preview slides.
 - Fixed nginx serving JSON-LD API responses uncompressed.
 - Made Vite honor the `COMPOSE_DOMAIN` environment variable.
+- Made the shell scripts in `scripts/` POSIX sh and added a ShellCheck CI gate, so bash-only
+  syntax can no longer break developers whose `/bin/sh` is dash.
 - Made dev cert creation run on Linux.
 - Updated all Composer and npm dependencies, taking `composer audit` from 23 advisories to two and
   `npm audit` from 17 to two; the four that remain need the API Platform 4 and React Router 7 majors.

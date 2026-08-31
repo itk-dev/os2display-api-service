@@ -191,3 +191,9 @@ services:
     profiles: [dev]
     volumes:
       - ./:/work
+
+  shellcheck:
+    image: koalaman/shellcheck:stable
+    profiles: [dev]
+    volumes:
+      - ./:/mnt

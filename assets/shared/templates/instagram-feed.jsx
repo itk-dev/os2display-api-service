@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import localeDa from "dayjs/locale/da";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -55,7 +55,6 @@ function InstagramFeed({ slide, content, run, slideDone, executionId }) {
   // Animation
   const [show, setShow] = useState(true);
   const animationDuration = 1500;
-  const fallbackRef = useRef(null);
 
   const { feedData = [] } = slide;
   const { hashtagText, orientation, imageWidth = null, mediaContain } = content;
@@ -69,39 +68,33 @@ function InstagramFeed({ slide, content, run, slideDone, executionId }) {
   const maxEntriesToShow = Number.isInteger(maxEntries) ? maxEntries : 5;
   const feedEntries = feedData?.slice(0, maxEntriesToShow) ?? [];
 
-  const { currentEntry: currentPost } = useMultipleEntrySlideExecution({
-    entries: feedEntries,
-    run,
-    slide,
-    slideDone,
-    entryDuration: duration,
-  });
+  const { currentEntry: currentPost, entryDuration } =
+    useMultipleEntrySlideExecution({
+      entries: feedEntries,
+      run,
+      slide,
+      slideDone,
+      entryDuration: duration,
+      emptyEntriesDuration: 1000,
+    });
 
   // Trigger fade-out animation before entry changes.
   useEffect(() => {
     if (!currentPost) return;
 
     setShow(true);
-    const animationTimer = setTimeout(() => {
-      setShow(false);
-    }, duration - animationDuration);
+    const animationTimer = setTimeout(
+      () => {
+        setShow(false);
+        // See the note in poster.jsx: derived from the hook's clamped duration.
+      },
+      Math.max(0, entryDuration - animationDuration),
+    );
 
     return () => clearTimeout(animationTimer);
   }, [currentPost]);
 
   // If no content, wait 1 second and continue to next slide.
-  useEffect(() => {
-    if (run && feedEntries.length === 0) {
-      fallbackRef.current = setTimeout(() => slideDone(slide), 1000);
-    }
-
-    return () => {
-      if (fallbackRef.current) {
-        clearTimeout(fallbackRef.current);
-      }
-    };
-  }, [run]);
-
   const getSanitizedMarkup = (textMarkup) => {
     return parse(DOMPurify.sanitize(textMarkup, {}));
   };

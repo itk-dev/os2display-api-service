@@ -1,20 +1,32 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import clampDuration from "./duration.js";
+
+// How long to hold a slide whose entries never arrived before moving on. Short
+// enough not to waste screen time, long enough that a feed resolving late still
+// gets a chance to start cycling.
+const DEFAULT_EMPTY_ENTRIES_DURATION = 1000;
 
 /**
  * Hook to manage slide execution for templates that cycle through
  * multiple entries (RSS feeds, news feeds, slideshows, etc.).
  *
- * Uses refs to avoid stale closures while keeping [run] as the
- * only dependency that triggers the cycling.
+ * Owns the whole slideDone contract, including the empty-entries case: a
+ * template using this hook cannot lock the playlist by forgetting a fallback.
  *
  * @param {object} options
  * @param {Array} options.entries Array of entries to cycle through.
- * @param {boolean} options.run Whether the slide should run.
+ * @param {string|null} options.run Run token: falsy means "do not run", and a
+ *   new truthy value restarts cycling without a remount.
  * @param {object} options.slide The slide object.
  * @param {Function} options.slideDone Callback when cycling completes.
- * @param {number} options.entryDuration Duration per entry in ms.
- * @returns {{currentEntry: object|null, entryIndex: number|null}} The entry
- *   being shown and its index, both null until cycling starts.
+ * @param {number} options.entryDuration Duration per entry in ms. Invalid or
+ *   missing falls back to DEFAULT_DURATION.
+ * @param {number} [options.emptyEntriesDuration] How long to hold before
+ *   finishing when there are no entries at all.
+ * @returns {{currentEntry: object|null, entryIndex: number|null,
+ *   entryDuration: number}} The entry being shown and its index, both null
+ *   until cycling starts, plus the clamped per-entry duration so a template's
+ *   own animation timers can be derived from the same number this hook uses.
  */
 function useMultipleEntrySlideExecution({
   entries,
@@ -22,13 +34,15 @@ function useMultipleEntrySlideExecution({
   slide,
   slideDone,
   entryDuration,
+  emptyEntriesDuration = DEFAULT_EMPTY_ENTRIES_DURATION,
 }) {
   // null means "not started" — an initial 0 would be indistinguishable from
   // showing the first entry, so consumers could not anchor timing to run.
   const [entryIndex, setEntryIndex] = useState(null);
   const [currentEntry, setCurrentEntry] = useState(null);
 
-  // Refs to avoid stale closures (same pattern as useBaseSlideExecution)
+  // Refs to avoid stale closures: these are read when a timer fires, not when
+  // the effect runs.
   const slideRef = useRef(slide);
   const slideDoneRef = useRef(slideDone);
   const entriesRef = useRef(entries);
@@ -43,17 +57,34 @@ function useMultipleEntrySlideExecution({
     entryDurationRef.current = entryDuration;
   });
 
+  // Depend on whether there are entries at all, not on the array itself:
+  // consumers rebuild the array every render, so depending on its identity
+  // would restart cycling continuously. This boolean only flips when a feed
+  // resolves (or empties), which is exactly when cycling should (re)start.
+  const hasEntries = (entries?.length ?? 0) > 0;
+
   useEffect(() => {
     if (!run) {
       setEntryIndex(null);
       setCurrentEntry(null);
-      return;
+      return undefined;
     }
-
-    if (!entriesRef.current?.length) return;
 
     let timeoutId = null;
     let stopped = false;
+
+    // No entries: hold briefly, then let the playlist move on. Owned here so no
+    // consumer has to remember it.
+    if (!hasEntries) {
+      timeoutId = setTimeout(() => {
+        slideDoneRef.current(slideRef.current);
+      }, clampDuration(emptyEntriesDuration));
+
+      return () => {
+        stopped = true;
+        clearTimeout(timeoutId);
+      };
+    }
 
     const showEntry = (index) => {
       if (stopped) return;
@@ -66,15 +97,10 @@ function useMultipleEntrySlideExecution({
       setEntryIndex(index);
       setCurrentEntry(entriesRef.current[index]);
 
-      const safeDuration =
-        Number.isFinite(entryDurationRef.current) &&
-        entryDurationRef.current > 0
-          ? entryDurationRef.current
-          : 15000;
-
-      timeoutId = setTimeout(() => {
-        showEntry(index + 1);
-      }, safeDuration);
+      timeoutId = setTimeout(
+        () => showEntry(index + 1),
+        clampDuration(entryDurationRef.current),
+      );
     };
 
     showEntry(0);
@@ -85,9 +111,13 @@ function useMultipleEntrySlideExecution({
         clearTimeout(timeoutId);
       }
     };
-  }, [run]);
+  }, [run, hasEntries, emptyEntriesDuration]);
 
-  return { currentEntry, entryIndex };
+  return {
+    currentEntry,
+    entryIndex,
+    entryDuration: clampDuration(entryDuration),
+  };
 }
 
 export default useMultipleEntrySlideExecution;

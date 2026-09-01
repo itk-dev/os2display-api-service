@@ -59,7 +59,6 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
   // A slot only updates when its animation genuinely needs new keyframes,
   // preventing unnecessary <style> mutations that restart animations.
   const [keyframeSlots, setKeyframeSlots] = useState(["", ""]);
-  const fallbackRef = useRef(null);
   const preparedNextKeyframesRef = useRef(null);
 
   const fadeEnabled = transition === "fade";
@@ -84,12 +83,13 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
     logoClasses.push(logoPosition);
   }
 
-  const { entryIndex } = useMultipleEntrySlideExecution({
+  const { entryIndex, entryDuration } = useMultipleEntrySlideExecution({
     entries: imageUrls,
     run,
     slide,
     slideDone,
     entryDuration: imageDurationInMilliseconds,
+    emptyEntriesDuration: 2000,
   });
 
   // entryIndex is null until the slide starts running. Render the first image
@@ -192,18 +192,6 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
   };
 
   // If there are no images in slide, wait for 2s before continuing to avoid crashes.
-  useEffect(() => {
-    if (run && imageUrls.length === 0) {
-      fallbackRef.current = setTimeout(() => slideDone(slide), 2000);
-    }
-
-    return () => {
-      if (fallbackRef.current) {
-        clearTimeout(fallbackRef.current);
-      }
-    };
-  }, [run]);
-
   // Regenerate animation keyframes and trigger fade for each image.
   // Pre-start the scale animation on the next image during the fade so
   // the zoom is already in progress when the image becomes visible.
@@ -250,7 +238,8 @@ function Slideshow({ slide, content, run, slideDone, executionId }) {
           }
         }
       },
-      imageDurationInMilliseconds - fadeDuration + fadeSafeMargin,
+      // Derived from the hook's clamped duration; see poster.jsx.
+      Math.max(0, entryDuration - fadeDuration + fadeSafeMargin),
     );
 
     return () => clearTimeout(fadeTimer);

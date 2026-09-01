@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 import localeDa from "dayjs/locale/da";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -44,7 +44,6 @@ function renderSlide(slide, run, slideDone) {
 function Poster({ slide, content, run, slideDone, executionId }) {
   const [translations, setTranslations] = useState({});
   const [show, setShow] = useState(true);
-  const fallbackRef = useRef(null);
   const logo = slide?.theme?.logo;
   const { showLogo, mediaContain } = content;
 
@@ -58,13 +57,15 @@ function Poster({ slide, content, run, slideDone, executionId }) {
 
   const feedEntries = feedData ?? [];
 
-  const { currentEntry: currentEvent } = useMultipleEntrySlideExecution({
-    entries: feedEntries,
-    run,
-    slide,
-    slideDone,
-    entryDuration: duration,
-  });
+  const { currentEntry: currentEvent, entryDuration } =
+    useMultipleEntrySlideExecution({
+      entries: feedEntries,
+      run,
+      slide,
+      slideDone,
+      entryDuration: duration,
+      emptyEntriesDuration: 1000,
+    });
 
   // Props from currentEvent.
   const {
@@ -138,25 +139,17 @@ function Poster({ slide, content, run, slideDone, executionId }) {
       () => {
         setShow(false);
       },
-      duration - animationDuration + 50,
+      // Derived from the hook's clamped duration, not the raw prop: an
+      // invalid `duration` leaves the hook cycling at its fallback, and a fade
+      // timer computed from the raw value would fire immediately and leave the
+      // entry faded out for the whole entry.
+      Math.max(0, entryDuration - animationDuration + 50),
     );
 
     return () => clearTimeout(animationTimer);
   }, [currentEvent]);
 
   // If no content, wait 1 second and continue to next slide.
-  useEffect(() => {
-    if (run && feedEntries.length === 0) {
-      fallbackRef.current = setTimeout(() => slideDone(slide), 1000);
-    }
-
-    return () => {
-      if (fallbackRef.current) {
-        clearTimeout(fallbackRef.current);
-      }
-    };
-  }, [run]);
-
   // Imports language strings and sets localized formats.
   useEffect(() => {
     dayjs.extend(localizedFormat);

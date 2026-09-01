@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import localeDa from "dayjs/locale/da";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -8,6 +8,7 @@ import DOMPurify from "dompurify";
 import Shape from "./instagram-feed/shape.svg";
 import InstagramLogo from "./instagram-feed/instagram-logo.svg";
 import { ThemeStyles } from "../slide-utils/slide-util.jsx";
+import useMultipleEntrySlideExecution from "../slide-utils/useMultipleEntrySlideExecution.js";
 import "../slide-utils/global-styles.css";
 import "./instagram-feed/instagram-feed.scss";
 import templateConfig from "./instagram-feed.json";
@@ -50,7 +51,6 @@ function InstagramFeed({ slide, content, run, slideDone, executionId }) {
   dayjs.extend(relativeTime);
 
   const [translations] = useState(da);
-  const [currentPost, setCurrentPost] = useState(null);
 
   // Animation
   const [show, setShow] = useState(true);
@@ -66,46 +66,35 @@ function InstagramFeed({ slide, content, run, slideDone, executionId }) {
   const { maxEntries = 5 } = content;
 
   const maxEntriesToShow = Number.isInteger(maxEntries) ? maxEntries : 5;
+  const feedEntries = feedData?.slice(0, maxEntriesToShow) ?? [];
 
-  /** Setup feed entry switch and animation, if there is more than one post. */
+  const { currentEntry: currentPost, entryDuration } =
+    useMultipleEntrySlideExecution({
+      entries: feedEntries,
+      run,
+      slide,
+      slideDone,
+      entryDuration: duration,
+      emptyEntriesDuration: 1000,
+    });
+
+  // Trigger fade-out animation before entry changes.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const currentIndex = feedData.indexOf(currentPost);
-      const nextIndex =
-        (currentIndex + 1) % Math.min(feedData.length, maxEntriesToShow);
+    if (!currentPost) return;
 
-      if (nextIndex === 0) {
-        slideDone(slide);
-      } else {
-        setCurrentPost(feedData[nextIndex]);
-        setShow(true);
-      }
-    }, duration);
+    setShow(true);
+    const animationTimer = setTimeout(
+      () => {
+        setShow(false);
+        // See the note in poster.jsx: derived from the hook's clamped duration.
+      },
+      Math.max(0, entryDuration - animationDuration),
+    );
 
-    const animationTimer = setTimeout(() => {
-      setShow(false);
-    }, duration - animationDuration);
-
-    return function cleanup() {
-      if (timer !== null) {
-        clearInterval(timer);
-      }
-      if (animationTimer !== null) {
-        clearInterval(animationTimer);
-      }
-    };
+    return () => clearTimeout(animationTimer);
   }, [currentPost]);
 
-  useEffect(() => {
-    if (run) {
-      if (feedData?.length > 0) {
-        setCurrentPost(feedData[0]);
-      } else {
-        setTimeout(() => slideDone(slide), 5000);
-      }
-    }
-  }, [run]);
-
+  // If no content, wait 1 second and continue to next slide.
   const getSanitizedMarkup = (textMarkup) => {
     return parse(DOMPurify.sanitize(textMarkup, {}));
   };

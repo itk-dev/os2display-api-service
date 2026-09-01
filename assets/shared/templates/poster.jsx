@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 import localeDa from "dayjs/locale/da";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { IntlProvider, FormattedMessage } from "react-intl";
 import da from "./poster/lang/da.json";
 import { ThemeStyles } from "../slide-utils/slide-util.jsx";
+import useMultipleEntrySlideExecution from "../slide-utils/useMultipleEntrySlideExecution.js";
 import "../slide-utils/global-styles.css";
 import "./poster/poster.scss";
 import templateConfig from "./poster.json";
@@ -42,11 +43,7 @@ function renderSlide(slide, run, slideDone) {
  */
 function Poster({ slide, content, run, slideDone, executionId }) {
   const [translations, setTranslations] = useState({});
-  const [currentEvent, setCurrentEvent] = useState(null);
-  const [currentIndex, setCurrentIndex] = useState(null);
   const [show, setShow] = useState(true);
-  const timerRef = useRef(null);
-  const animationTimerRef = useRef(null);
   const logo = slide?.theme?.logo;
   const { showLogo, mediaContain } = content;
 
@@ -57,6 +54,18 @@ function Poster({ slide, content, run, slideDone, executionId }) {
   // Animation.
   const animationDuration = 500;
   const { duration = 15000 } = content; // default 15s.
+
+  const feedEntries = feedData ?? [];
+
+  const { currentEntry: currentEvent, entryDuration } =
+    useMultipleEntrySlideExecution({
+      entries: feedEntries,
+      run,
+      slide,
+      slideDone,
+      entryDuration: duration,
+      emptyEntriesDuration: 1000,
+    });
 
   // Props from currentEvent.
   const {
@@ -121,75 +130,30 @@ function Poster({ slide, content, run, slideDone, executionId }) {
     );
   };
 
+  // Trigger fade-out animation before entry changes.
   useEffect(() => {
-    if (currentEvent) {
-      setShow(true);
-    }
+    if (!currentEvent) return;
+
+    setShow(true);
+    const animationTimer = setTimeout(
+      () => {
+        setShow(false);
+      },
+      // Derived from the hook's clamped duration, not the raw prop: an
+      // invalid `duration` leaves the hook cycling at its fallback, and a fade
+      // timer computed from the raw value would fire immediately and leave the
+      // entry faded out for the whole entry.
+      Math.max(0, entryDuration - animationDuration + 50),
+    );
+
+    return () => clearTimeout(animationTimer);
   }, [currentEvent]);
 
-  // Setup feed entry switch and animation, if there is more than one post.
-  useEffect(() => {
-    if (currentIndex === null) {
-      return;
-    }
-
-    setCurrentEvent(feedData[currentIndex]);
-
-    const nextIndex = (currentIndex + 1) % feedData.length;
-
-    if (nextIndex > 0) {
-      if (animationTimerRef?.current) {
-        clearInterval(animationTimerRef.current);
-      }
-
-      animationTimerRef.current = setTimeout(
-        () => {
-          setShow(false);
-        },
-        duration - animationDuration + 50,
-      );
-    }
-
-    if (timerRef?.current) {
-      clearInterval(timerRef.current);
-    }
-
-    timerRef.current = setTimeout(() => {
-      if (nextIndex === 0) {
-        slideDone(slide);
-      } else {
-        setCurrentIndex(nextIndex);
-      }
-    }, duration);
-  }, [currentIndex]);
-
-  useEffect(() => {
-    if (run) {
-      if (feedData?.length > 0) {
-        setCurrentIndex(0);
-      } else {
-        setTimeout(() => slideDone(slide), 1000);
-      }
-    } else {
-      setCurrentEvent(null);
-      setCurrentIndex(null);
-    }
-  }, [run]);
-
-  // Imports language strings, sets localized formats and sets timer.
+  // If no content, wait 1 second and continue to next slide.
+  // Imports language strings and sets localized formats.
   useEffect(() => {
     dayjs.extend(localizedFormat);
-
     setTranslations(da);
-
-    return function cleanup() {
-      if (timerRef?.current) {
-        clearInterval(timerRef.current);
-      }
-      if (animationTimerRef?.current) {
-        clearInterval(animationTimerRef.current);
-      }
-    };
   }, []);
 
   return (

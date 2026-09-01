@@ -25,7 +25,7 @@ Every template `.jsx` must:
    export default { id, config, renderSlide };
    ```
 
-2. **Call `slideDone()`** at some point — either via `BaseSlideExecution` (which calls it after `slide.content.duration` seconds, see `assets/shared/slide-utils/base-slide-execution.js`) or directly from a `useEffect` / event handler. **A template that never calls slideDone() locks the playlist.**
+2. **Call `slideDone()`** at some point — either via `useBaseSlideExecution` (which calls it after `slide.content.duration` ms, see `assets/shared/slide-utils/useBaseSlideExecution.js`), via `useMultipleEntrySlideExecution` (which cycles `entries` then calls it, see `assets/shared/slide-utils/useMultipleEntrySlideExecution.js`), or directly from a `useEffect` / event handler. **A template that never calls slideDone() locks the playlist.**
 
 3. Read content from `slide.content` using keys that exist in the `.json`'s `adminForm` `name:` values. Mismatched keys = the admin form writes data the renderer never reads.
 
@@ -47,7 +47,9 @@ Every template `.json` must:
 
 3. **Re-export shape** — `.jsx` exports `default { id, config, renderSlide }`. Missing any of the three = the template won't register.
 
-4. **slideDone signalling** — the rendered component either uses `BaseSlideExecution` (preferred, lives in `assets/shared/slide-utils/base-slide-execution.js`) or calls `slideDone()` directly. Search for `slideDone` in the `.jsx`; if it's only in the prop signature and never called, that's a blocker.
+4. **slideDone signalling** — the rendered component either uses one of the hooks in `assets/shared/slide-utils/` (`useBaseSlideExecution` for a fixed duration, `useMultipleEntrySlideExecution` to cycle entries first — both preferred) or calls `slideDone()` directly. Search for `slideDone` in the `.jsx`; if it's only in the prop signature and never called, that's a blocker.
+
+   When the template reads `entryIndex` from `useMultipleEntrySlideExecution`, check it guards on `null` ("not started") rather than treating the initial value as index `0` — timers or counters anchored to mount instead of to `run` are the recurring bug here.
 
 5. **adminForm / renderer key alignment** — for each `name:` in `adminForm`, confirm it's read by the renderer (`slide.content.<name>` or destructured from `content`). For each key the renderer reads from `slide.content`, confirm there's a matching `adminForm` entry — otherwise the admin can't set it. Mismatches both ways are bugs.
 

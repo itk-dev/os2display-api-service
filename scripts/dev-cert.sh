@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 #
 # Generate a self-signed certificate for the bundled dev traefik.
 # Writes traefik/ssl/dev.{crt,key} covering COMPOSE_DOMAIN as the primary
@@ -14,7 +14,6 @@
 # openssl is needed on the host.
 
 set -eu
-(set -o pipefail) 2>/dev/null && set -o pipefail || true
 
 CERT_DIR="traefik/ssl"
 CERT_FILE="$CERT_DIR/dev.crt"

@@ -5,7 +5,7 @@ import ErrorBoundary from "./error-boundary.jsx";
 import idFromPath from "../util/id-from-path";
 import logger from "../logger/logger";
 import Slide from "./slide.jsx";
-import nextRunId from "../util/next-run-id";
+import nextRunId from "../../shared/slide-utils/next-run-id.js";
 import "./region.scss";
 
 /**

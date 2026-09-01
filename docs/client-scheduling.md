@@ -101,13 +101,19 @@ rotation state:
 ### The run token (`runId`)
 
 React re-renders components whenever anything changes; a plain boolean "run" flag can't tell a template *"start over"*
-if the same slide plays twice in a row (a one-slide playlist). So the region passes a fresh timestamp string (`new
-Date().toISOString()`) as the `run` prop every time a slide should (re)start:
+if the same slide plays twice in a row (a one-slide playlist). So the region passes a fresh value as the `run` prop
+every time a slide should (re)start:
 
 - Falsy (`null`) → don't run.
 - Truthy → run; a **new** truthy value → restart, even without remount.
 
 Templates and hooks must key their timers to *changes* of this token, never to "component appeared on screen" (mount).
+
+The value is a counter (`nextRunId`, `assets/shared/slide-utils/next-run-id.js`), not a clock reading. A template that
+calls `slideDone()` while mounting lands in the same millisecond as the run that started it, so a timestamp would
+repeat, React would bail out of the state update, and the region would stop advancing — and no finer clock fixes it,
+because browsers deliberately coarsen timer resolution as a fingerprinting mitigation. `nextRunId` holds no counter of
+its own: it is a pure state updater, so each region derives an independent sequence from its own state.
 
 ### Advancing
 
@@ -117,9 +123,18 @@ The region hands each slide a `slideDone(slide)` callback. When called:
 2. **Wraparound is the swap point**: if the next index is `0` and `newSlides` is staged, the staged list replaces
    `slides` and its first slide plays. Content updates therefore never interrupt a rotation mid-cycle — they apply at
    the start of the next loop.
-3. Set a fresh `runId`.
+3. Set a fresh `runId`, but no sooner than `MIN_SLIDE_DWELL_MS` (1 s) after the current run started.
 
-Two details that are easy to miss:
+Three details that are easy to miss:
+
+- **A slide cannot advance the region faster than the dwell floor** (`slide.jsx`). Templates may finish while mounting
+  — a video slide with no playable media calls `slideDone()` synchronously from its own effect — and since a region
+  replays a slide by handing it a new run id, an unguarded advance is an unbounded
+  `effect → slideDone → new run id → effect` loop. `Slide` defers such a `slideDone` to the remainder of the floor
+  instead of passing it straight through, and coalesces repeat signals within one run. The floor matches the 1 s
+  cross-fade below, so a transition can always finish before the next advance. It is measured with `performance.now()`,
+  which is monotonic — a wall-clock step on a screen that has been up for weeks must not make a slide advance instantly
+  or hang.
 
 - **A staged list goes live immediately when nothing is playing** (`region.jsx`: `if (newSlides !== null &&
   !currentSlide)`). Wraparound is the swap point only while a rotation is actually running; on first load, or when an
@@ -283,6 +298,9 @@ Every template must:
 ### Debugging "screen is stuck / wrong content"
 
 - [ ] Slide never advances → search the template for `slideDone`; if it's only in the signature, that's the bug.
+- [ ] Slide flickers or churns instead of holding → the template is finishing while mounting (empty media, empty feed,
+      a duration of ~0). The dwell floor caps this at one advance per second rather than a render loop, but the
+      template is still wrong: it should hold for a readable moment, not signal done immediately.
 - [ ] Playlist not showing → check publish window first, then whether `schedules` exist (schedules make the playlist
       hidden-by-default) and whether an occurrence covers *now* under the pretend-UTC convention.
 - [ ] Schedule changes late → expected up to `schedulingInterval` (60 s default) after the boundary.

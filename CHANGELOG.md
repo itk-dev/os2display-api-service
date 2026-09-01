@@ -4,11 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Fixed a region locking up when a slide signalled `slideDone()` in the same millisecond it started.
-  The run id was a `new Date().toISOString()` timestamp, and a slide is keyed by its execution id, so
-  a region holding a single slide never remounts it — replaying depends entirely on the run id
-  changing value. Identical timestamps made React bail out of the state update, so the slide never
-  ran again. The run id is now a counter, shared by `region.jsx` and `touch-region.jsx`.
+- Fixed a region locking up when a slide signalled `slideDone()` in the same millisecond it started;
+  the run id is now a counter rather than a timestamp.
+- Added a minimum dwell before a region acts on `slideDone()`, so a template that finishes while
+  mounting — a video slide with no playable media — can no longer spin the region.
 - Moved the empty-feed fallback into `useMultipleEntrySlideExecution` so a template cannot lock a
   playlist by omitting it, and started cycling when feed entries arrive after the slide did.
 - Fixed template fade timers being derived from an unclamped duration, which left an entry faded out

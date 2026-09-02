@@ -1,5 +1,8 @@
 import logger from "../logger/logger";
 import appStorage from "../util/app-storage";
+import fetchWithTimeout, {
+  REQUEST_TIMEOUT,
+} from "../util/fetch-with-timeout.js";
 
 // Statuses that mean "try again later" rather than "this failed".
 // 429 is the rate limit response from the reverse proxy, 502/503/504 are
@@ -20,9 +23,11 @@ const RETRY_BASE_DELAY = 500;
 // for an hour inside a poll that runs every few minutes.
 const MAX_RETRY_DELAY = 30000;
 
-// Give up on a single request after this long. A socket that never answers
-// neither fails nor retries, which is the one case backoff cannot help.
-const REQUEST_TIMEOUT = 15000;
+// Spread applied on top of a Retry-After the server sent. Every client rejected
+// in the same second is handed the same value, so honouring it verbatim would
+// re-synchronise the burst the header exists to spread. Added rather than
+// subtracted: RFC 9110 makes Retry-After a minimum, not a target.
+const RETRY_AFTER_JITTER = 250;
 
 // Backstop so a misbehaving collection cannot page indefinitely. Matches the
 // limit used by the admin's get-all-pages helper.
@@ -68,7 +73,9 @@ class ApiHelper {
     );
 
     if (!Number.isNaN(retryAfter) && retryAfter > 0) {
-      return Math.min(retryAfter * 1000, MAX_RETRY_DELAY);
+      const asked = Math.min(retryAfter * 1000, MAX_RETRY_DELAY);
+
+      return asked + Math.floor(Math.random() * RETRY_AFTER_JITTER);
     }
 
     // Full jitter: anywhere in [0, capped]. Spreads a burst that was rejected
@@ -150,17 +157,12 @@ class ApiHelper {
 
     logger.log("info", `Fetching: ${this.endpoint + path}`);
 
-    // A request that never answers would otherwise sit in Promise.allSettled
-    // forever, holding a worker and stalling the pull.
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
     let response;
 
     try {
-      response = await fetch(this.endpoint + path, {
-        headers,
-        signal: controller.signal,
-      });
+      // A request that never answers would otherwise sit in the fan-out
+      // forever, holding a worker and stalling the pull.
+      response = await fetchWithTimeout(this.endpoint + path, { headers });
     } catch (err) {
       const timedOut = err.name === "AbortError";
 
@@ -172,8 +174,6 @@ class ApiHelper {
 
       // A transport error and a timeout are both worth another attempt.
       return { data: null, retry: true, status: null, response: null };
-    } finally {
-      clearTimeout(timeout);
     }
 
     if (response.ok === false) {

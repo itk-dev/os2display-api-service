@@ -20,11 +20,29 @@ const MAX_CONCURRENT_REQUESTS = 6;
 class PullStrategy {
   lastestScreenData;
 
+  // Screen checksums to compare the next pull against. Kept apart from
+  // lastestScreenData because a pull that fell back to cached data must not be
+  // credited with the server's fresh checksum for the part it failed to fetch,
+  // and the screen object itself cannot be edited to say so: ContentService
+  // hashes it to decide whether the screen changed, so any rewrite would look
+  // like a change and re-emit the screen on every pull.
+  lastestScreenChecksums;
+
   // Helper for all api calls.
   apiHelper;
 
   // Fetch-interval in ms.
   interval;
+
+  // Set by stop(), so a pull already in flight does not schedule another one.
+  stopped = false;
+
+  // Handle of the pending pull, and the generation it belongs to. Restarting
+  // bumps the generation, so a pull left over from an earlier start() cannot
+  // schedule alongside the current chain.
+  activeTimeout;
+
+  chainId = 0;
 
   // Path to screen that should be loaded data for.
   entryPoint = "";
@@ -50,9 +68,10 @@ class PullStrategy {
    * Gets all campaigns, both from screen and groups.
    *
    * @param {object} screen The screen object to extract campaigns from.
+   * @param {object} report Collects which relation groups came back degraded.
    * @returns {Promise<object>} Array of campaigns (playlists).
    */
-  async getCampaignsData(screen) {
+  async getCampaignsData(screen, report = {}) {
     const screenGroupCampaigns = [];
 
     try {
@@ -77,10 +96,19 @@ class PullStrategy {
             (result.value.results ?? []).forEach(({ campaign }) => {
               screenGroupCampaigns.push(campaign);
             });
+
+            return;
           }
+
+          report.campaigns = true;
         });
+      } else {
+        // getAllResultsFromPath answers a bare {} when a page failed, so a
+        // missing results key is a failure rather than an empty collection.
+        report.campaigns = true;
       }
     } catch (err) {
+      report.campaigns = true;
       logger.error(err);
     }
 
@@ -91,25 +119,31 @@ class PullStrategy {
       const screenCampaignsResponse =
         await this.apiHelper.getAllResultsFromPath(screen.campaigns);
 
-      screenCampaigns = (screenCampaignsResponse.results ?? []).map(
-        ({ campaign }) => campaign,
-      );
+      if (
+        Object.prototype.hasOwnProperty.call(screenCampaignsResponse, "results")
+      ) {
+        screenCampaigns = screenCampaignsResponse.results.map(
+          ({ campaign }) => campaign,
+        );
+      } else {
+        report.campaigns = true;
+      }
     } catch (err) {
+      report.campaigns = true;
       logger.error(err);
     }
 
-    return new Promise((resolve) => {
-      resolve([...screenCampaigns, ...screenGroupCampaigns]);
-    });
+    return [...screenCampaigns, ...screenGroupCampaigns];
   }
 
   /**
    * Get slides for regions.
    *
    * @param {Array} regions Paths to regions.
+   * @param {object} report Collects which relation groups came back degraded.
    * @returns {Promise<object>} Regions data.
    */
-  async getRegions(regions) {
+  async getRegions(regions, report = {}) {
     const reg = /\/v2\/screens\/.*\/regions\/(?<regionId>.*)\/playlists/;
 
     // Pair each region id with its request up front. Reading the id back out of
@@ -144,6 +178,8 @@ class PullStrategy {
         return;
       }
 
+      report.regions = true;
+
       // Keep the last known good playlists for this region rather than an empty
       // list. On signage, content that is one pull out of date beats a black
       // region, and a rejected request says nothing about what should be shown.
@@ -174,9 +210,10 @@ class PullStrategy {
    * Get slides for the given regions.
    *
    * @param {object} regions Regions to fetch slides for.
+   * @param {object} report Collects which relation groups came back degraded.
    * @returns {Promise<object>} Promise with slides for the given regions.
    */
-  async getSlidesForRegions(regions) {
+  async getSlidesForRegions(regions, report = {}) {
     const regionData = cloneDeep(regions);
     const entries = [];
 
@@ -206,6 +243,8 @@ class PullStrategy {
         result.status !== "fulfilled" ||
         result.value?.results === undefined
       ) {
+        report.regions = true;
+
         // Leave slidesData alone: cloneDeep kept whatever the previous pull
         // attached, which is better than an empty playlist.
         logger.warn(
@@ -221,6 +260,43 @@ class PullStrategy {
     });
 
     return regionData;
+  }
+
+  /**
+   * Screen checksums the next pull should compare itself against.
+   *
+   * A pull that fell back to cached data for a relation group is not entitled to
+   * the server's checksum for it. Storing it anyway is what froze screens: the
+   * next pull compares equal, takes the cache branch, and serves the degraded
+   * data until somebody edits the content in Admin (#507). Clearing the
+   * checksum makes the group differ, so the next pull fetches it again.
+   *
+   * @param {object|null} checksums Checksums as the server sent them.
+   * @param {object} report Relation groups this pull failed to load.
+   * @returns {object|null} Checksums to compare the next pull against.
+   */
+  static checksumsToStore(checksums, report) {
+    if (checksums === null) {
+      return null;
+    }
+
+    const stored = { ...checksums };
+
+    if (report.campaigns) {
+      // One getCampaignsData call covers both, so neither can be trusted.
+      stored.campaigns = null;
+      stored.inScreenGroups = null;
+    }
+
+    if (report.layout) {
+      stored.layout = null;
+    }
+
+    if (report.regions) {
+      stored.regions = null;
+    }
+
+    return stored;
   }
 
   /**
@@ -254,18 +330,27 @@ class PullStrategy {
 
     newScreen.hasActiveCampaign = false;
 
-    const newScreenChecksums = newScreen?.relationsChecksum ?? [];
-    const oldScreenChecksums =
-      this.lastestScreenData?.relationsChecksum ?? null;
+    // Which relation groups this pull failed to load. A group listed here keeps
+    // whatever the previous pull had, so its checksum must not be stored - see
+    // checksumsToStore.
+    const report = {};
+
+    // Null rather than [] when the server sends no checksums at all: an empty
+    // object compares equal to the next empty object on every key, which would
+    // freeze the screen on cached data after the first pull. The API really can
+    // send nothing here - the DTO getter answers null for an empty map.
+    const newScreenChecksums = newScreen?.relationsChecksum ?? null;
+    const oldScreenChecksums = this.lastestScreenChecksums ?? null;
 
     if (
       relationChecksumEnabled === false ||
+      newScreenChecksums === null ||
       oldScreenChecksums === null ||
       oldScreenChecksums?.campaigns !== newScreenChecksums?.campaigns ||
       oldScreenChecksums?.inScreenGroups !== newScreenChecksums?.inScreenGroups
     ) {
       logger.info(`Fetching campaigns.`);
-      newScreen.campaignsData = await this.getCampaignsData(newScreen);
+      newScreen.campaignsData = await this.getCampaignsData(newScreen, report);
     } else {
       logger.info(`Campaigns data loaded from cache.`);
       newScreen.campaignsData = this.lastestScreenData.campaignsData;
@@ -307,6 +392,7 @@ class PullStrategy {
       ];
       newScreen.regionData = await this.getSlidesForRegions(
         newScreen.regionData,
+        report,
       );
     } else {
       logger.info(`Has no active campaign.`);
@@ -314,12 +400,18 @@ class PullStrategy {
       // Get layout: Defines layout and regions.
       if (
         relationChecksumEnabled === false ||
+        newScreenChecksums === null ||
         this.lastestScreenData?.hasActiveCampaign ||
         oldScreenChecksums === null ||
         oldScreenChecksums?.layout !== newScreenChecksums?.layout
       ) {
         logger.info(`Fetching layout.`);
         newScreen.layoutData = await this.apiHelper.getPath(newScreen.layout);
+
+        if (newScreen.layoutData === null) {
+          report.layout = true;
+          logger.warn(`Could not load layout (${newScreen.layout}).`);
+        }
       } else {
         // Get layout: Defines layout and regions.
         logger.info(`Layout loaded from cache.`);
@@ -329,13 +421,14 @@ class PullStrategy {
       // Fetch regions playlists: Yields playlists of slides for the regions
       if (
         relationChecksumEnabled === false ||
+        newScreenChecksums === null ||
         this.lastestScreenData?.hasActiveCampaign ||
         oldScreenChecksums === null ||
         oldScreenChecksums?.regions !== newScreenChecksums?.regions
       ) {
         logger.info(`Fetching regions and slides for regions.`);
-        const regions = await this.getRegions(newScreen.regions);
-        newScreen.regionData = await this.getSlidesForRegions(regions);
+        const regions = await this.getRegions(newScreen.regions, report);
+        newScreen.regionData = await this.getSlidesForRegions(regions, report);
       } else {
         logger.info(`Regions and slides for regions loaded from cache.`);
         newScreen.regionData = this.lastestScreenData.regionData;
@@ -378,13 +471,23 @@ class PullStrategy {
             previousSlide = {};
           }
 
-          const newSlideChecksums = slide.relationsChecksum ?? [];
+          // Null rather than [] for the same reason as the screen checksums
+          // above: two empty maps compare equal on every key.
+          const newSlideChecksums = slide.relationsChecksum ?? null;
           const oldSlideChecksums = previousSlide?.relationsChecksum ?? null;
 
-          // Fetch template if it has changed.
+          // Fetch template if it has changed, or if the last attempt to load it
+          // failed. Without the second condition a failed fetch is cached as
+          // null behind an unchanged checksum, and every later pull reuses the
+          // null - the slide stays invalid until an editor touches it (#507).
+          // The checksum cannot carry that signal: when the regions branch is
+          // served from cache, slide and previousSlide are clones of the same
+          // cached object, so their checksums always agree.
           if (
             relationChecksumEnabled === false ||
+            newSlideChecksums === null ||
             oldSlideChecksums === null ||
+            previousSlide.templateData === null ||
             newSlideChecksums.templateInfo !== oldSlideChecksums.templateInfo
           ) {
             const templatePath = slide.templateInfo["@id"];
@@ -417,12 +520,20 @@ class PullStrategy {
               `Template (${slide.templateInfo["@id"]}) not loaded, slideId: ${slide["@id"]}`,
             );
             slide.invalid = true;
+          } else if (slide.invalid === true) {
+            // Carried over from a pull where the template failed. Region
+            // filters invalid slides out, so refetching the template achieves
+            // nothing unless the flag is cleared with it.
+            delete slide.invalid;
           }
 
-          // Fetch media if it has changed.
+          // Fetch media if it has changed, or if any item in the cached set
+          // failed to load last time - same reasoning as the template above.
           if (
             relationChecksumEnabled === false ||
+            newSlideChecksums === null ||
             oldSlideChecksums === null ||
+            Object.values(previousSlide.mediaData ?? {}).includes(null) ||
             newSlideChecksums.media !== oldSlideChecksums.media
           ) {
             const nextMediaData = {};
@@ -442,6 +553,12 @@ class PullStrategy {
             }
 
             slide.mediaData = nextMediaData;
+
+            if (Object.values(nextMediaData).includes(null)) {
+              logger.warn(
+                `Media not loaded for slideId: ${slide["@id"]}. Retrying on the next pull.`,
+              );
+            }
           } else {
             logger.info(`Media data loaded from cache.`);
             slide.mediaData = previousSlide.mediaData;
@@ -460,6 +577,10 @@ class PullStrategy {
     /* eslint-enable no-restricted-syntax,no-await-in-loop */
 
     this.lastestScreenData = newScreen;
+    this.lastestScreenChecksums = PullStrategy.checksumsToStore(
+      newScreenChecksums,
+      report,
+    );
 
     // Deliver result to rendering
     const event = new CustomEvent("content", {
@@ -512,32 +633,55 @@ class PullStrategy {
    * Start the data synchronization.
    */
   start() {
-    // Pull now.
-    this.getScreen(this.entryPoint)
-      .catch((err) => {
-        // A failed first pull must not stop the poll interval from being
-        // scheduled, or the screen stays dead until it is reloaded.
-        logger.error(err);
-      })
-      .finally(() => {
-        // Make sure nothing is running.
-        this.stop();
+    // Make sure nothing is running.
+    this.stop();
 
-        // Start interval for pull periodically.
-        this.activeInterval = setInterval(
-          () => this.getScreen(this.entryPoint),
+    this.stopped = false;
+    this.chainId += 1;
+
+    // Pull now, then keep rescheduling.
+    this.pull(this.chainId);
+  }
+
+  /**
+   * Run one pull, then schedule the next one.
+   *
+   * @param {number} chainId The generation this chain belongs to.
+   */
+  async pull(chainId) {
+    try {
+      await this.getScreen(this.entryPoint);
+    } catch (err) {
+      // A failed pull must not stop the poll from being scheduled, or the
+      // screen stays dead until it is reloaded.
+      logger.error(err);
+    } finally {
+      // In finally rather than after the catch: a throw from logger.error
+      // would otherwise end the chain silently. The generation check keeps a
+      // restart from leaving two chains scheduling against each other.
+      if (this.stopped === false && chainId === this.chainId) {
+        // Scheduled only once the previous pull settled. setInterval would
+        // start a second pull on top of a slow one, doubling the fan-out
+        // exactly when the backend is already struggling (#507).
+        this.activeTimeout = setTimeout(
+          () => this.pull(chainId),
           this.interval,
         );
-      });
+      }
+    }
   }
 
   /**
    * Stop the data synchronization.
    */
   stop() {
-    if (this.activeInterval !== undefined) {
-      clearInterval(this.activeInterval);
-      delete this.activeInterval;
+    // A pull already in flight cannot be cancelled, so the flag is what keeps
+    // it from scheduling a successor once it finishes.
+    this.stopped = true;
+
+    if (this.activeTimeout !== undefined) {
+      clearTimeout(this.activeTimeout);
+      delete this.activeTimeout;
     }
   }
 }

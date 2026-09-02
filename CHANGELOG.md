@@ -27,6 +27,12 @@ All notable changes to this project will be documented in this file.
   `NGINX_RATE_LIMIT_BURST` and answers `429` instead of `503`.
 - Made the screen client retry throttled and temporarily failing API requests with backoff, and
   bounded how many requests one pull may have in flight (#507).
+- Fixed the screen client caching a partially failed pull as if it were complete, which left a
+  region, layout, template or media item stale until someone edited the content in the admin (#507).
+- Made the screen client wait for a pull to finish before starting the next one, so a slow pull can
+  no longer have a second one stacked on top of it (#507).
+- Added a timeout to the client config request, so a request that never answers can no longer stall
+  the screen client's polling (#507).
 
 ## [3.0.0-rc8] - 2026-08-24
 

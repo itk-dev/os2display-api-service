@@ -8,9 +8,9 @@ import "./slide.scss";
 // Templates may finish while mounting -- a video slide with no playable media
 // calls slideDone() synchronously from its own effect -- and a region replays a
 // slide by handing it a new run id, so an unguarded advance becomes an
-// unbounded effect -> slideDone -> new run id -> effect loop. Matches the
-// region's 1s CSSTransition, so a cross-fade can always finish before the next
-// advance.
+// unbounded effect -> slideDone -> new run id -> effect loop. The region drives
+// its cross-fade off this same value, so a transition can always finish before
+// the next advance -- keep region.scss's opacity transition in step.
 export const MIN_SLIDE_DWELL_MS = 1000;
 
 /**
@@ -29,12 +29,22 @@ export const MIN_SLIDE_DWELL_MS = 1000;
 function Slide({ slide, id, run, slideDone, slideError, forwardRef }) {
   const slideDoneRef = useRef(slideDone);
   const pendingDoneRef = useRef(null);
+  const doneForRunRef = useRef(null);
   const runStartRef = useRef({ run: null, at: 0 });
 
-  // When the current run started, recorded during render rather than in an
-  // effect: React runs a child's effects before its parent's, so a template
-  // that finishes while mounting would call slideDone() before an effect here
-  // had run, and the very first advance would escape the guard.
+  // When the current run started, recorded during render rather than in a
+  // layout effect. React runs a child's effects before its parent's, but only
+  // within a phase: a template finishing from its own *layout* effect signals
+  // before a layout effect here could stamp the run start, which would leave
+  // this at its {run: null, at: 0} initial value and make the guard below
+  // misread the run -- measuring the dwell from 0 lets the advance through at
+  // once, and a null run reads as "already accepted" and swallows it. Only a
+  // render-phase write is ahead of every child effect.
+  //
+  // The in-tree templates do not make that obvious: video.jsx finishes from a
+  // passive effect, which a layout effect here would beat, so reasoning from
+  // the templates alone makes a layout effect look sufficient. It is not --
+  // see region-layout-effect-finish.test.jsx.
   //
   // performance.now() rather than Date.now() because it is monotonic -- a wall
   // clock step on a screen that has been up for weeks must not make a slide
@@ -67,11 +77,29 @@ function Slide({ slide, id, run, slideDone, slideError, forwardRef }) {
    * @param {object} doneSlide - The slide that finished.
    */
   const slideDoneAfterMinimumDwell = useCallback((doneSlide) => {
-    // Already waiting: a template that signals more than once in a single run
-    // still advances the region only once.
-    if (pendingDoneRef.current !== null) {
+    // Not running: a falsy run means the region has not started this slide, so
+    // there is no run to finish. Checked before the per-run guard below, whose
+    // "nothing accepted yet" value is also null.
+    if (!runStartRef.current.run) {
       return;
     }
+
+    // One advance per run: a template that signals more than once in a single
+    // run still moves the region on only once, whether the extra signals arrive
+    // while a deferred advance is pending or after the floor has passed. Two
+    // late signals in one tick would otherwise both read the pre-update run
+    // start and call slideDone() twice, which React batches into two run id
+    // increments -- a genuine double advance.
+    //
+    // Read through runStartRef rather than the `run` prop: this callback has no
+    // dependencies, so it closes over the run it was first created for. The
+    // guard clears itself, since the render-phase write above moves
+    // runStartRef.current.run on as soon as the region starts the next run.
+    if (doneForRunRef.current === runStartRef.current.run) {
+      return;
+    }
+
+    doneForRunRef.current = runStartRef.current.run;
 
     const remaining =
       MIN_SLIDE_DWELL_MS - (performance.now() - runStartRef.current.at);

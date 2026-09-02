@@ -131,10 +131,17 @@ Three details that are easy to miss:
   — a video slide with no playable media calls `slideDone()` synchronously from its own effect — and since a region
   replays a slide by handing it a new run id, an unguarded advance is an unbounded
   `effect → slideDone → new run id → effect` loop. `Slide` defers such a `slideDone` to the remainder of the floor
-  instead of passing it straight through, and coalesces repeat signals within one run. The floor matches the 1 s
-  cross-fade below, so a transition can always finish before the next advance. It is measured with `performance.now()`,
-  which is monotonic — a wall-clock step on a screen that has been up for weeks must not make a slide advance instantly
-  or hang.
+  instead of passing it straight through, and accepts only the first signal of each run — repeats are dropped whether
+  they arrive while a deferred advance is pending or after the floor has passed. The floor is where the 1 s cross-fade
+  below comes from (`region.jsx` passes `MIN_SLIDE_DWELL_MS` to the `CSSTransition`), so a transition can always finish
+  before the next advance. It is measured with `performance.now()`, which is monotonic — a wall-clock step on a screen
+  that has been up for weeks must not make a slide advance instantly or hang.
+
+  `Slide` records the start of a run *during render*, not in an effect. React runs a child's effects before its
+  parent's within a phase, so a template that finishes from its own layout effect would signal before a layout effect
+  in `Slide` could stamp the run start, and the first advance would escape the floor. No shipped template does this
+  (`video.jsx` uses a passive effect), which is why it is pinned by
+  `assets/tests/client/region-layout-effect-finish.test.jsx`.
 
 - **A staged list goes live immediately when nothing is playing** (`region.jsx`: `if (newSlides !== null &&
   !currentSlide)`). Wraparound is the swap point only while a rotation is actually running; on first load, or when an

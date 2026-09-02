@@ -219,6 +219,25 @@ describe("Region holds a slide for a minimum dwell", () => {
     expect(Number(runIdOf())).toBe(firstRun + 1);
   });
 
+  it("advances once when a template signals repeatedly past the floor", () => {
+    // The deferred path coalesces by finding a pending timer. Past the floor
+    // there is no timer to find, so without a per-run record every late signal
+    // would pass straight through and bump the run id again.
+    const slide = createSlide("EXECUTIONA");
+
+    const { container } = renderRegion([slide]);
+
+    const runIdOf = () => container.querySelector("#EXECUTIONA")?.dataset.run;
+    const firstRun = Number(runIdOf());
+
+    playPastDwellFloor();
+
+    finishSlide(slide);
+    finishSlide(slide);
+
+    expect(Number(runIdOf())).toBe(firstRun + 1);
+  });
+
   it("does not hold back a slide that played its duration", () => {
     const slide = createSlide("EXECUTIONA");
 

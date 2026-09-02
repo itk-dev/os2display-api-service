@@ -17,6 +17,7 @@
   - [Developer guide](#developer-guide)
     - [Repository changes](#repository-changes)
     - [Convert external templates to custom templates](#convert-external-templates-to-custom-templates)
+    - [`BaseSlideExecution` replaced by hooks](#baseslideexecution-replaced-by-hooks)
     - [Removed feed types](#removed-feed-types)
 
 ## 2.x -> 3.0
@@ -322,6 +323,55 @@ Checklist:
 - [ ] Template `id` identical to the 2.x external template.
 - [ ] `app:templates:list` shows the custom template as available/installed.
 - [ ] Existing slides using the template render in preview and on a screen.
+
+#### `BaseSlideExecution` replaced by hooks
+
+`assets/shared/slide-utils/base-slide-execution.js` is removed. Templates that imported it must
+switch to `useBaseSlideExecution`, which owns the timer and clears it on unmount:
+
+```jsx
+// Before
+import BaseSlideExecution from "../slide-utils/base-slide-execution";
+
+const slideExecution = new BaseSlideExecution(slide, slideDone);
+useEffect(() => {
+  if (run) {
+    slideExecution.start(duration);
+  }
+
+  return function cleanup() {
+    slideExecution.stop();
+  };
+}, [run]);
+
+// After
+import useBaseSlideExecution from "../slide-utils/useBaseSlideExecution.js";
+
+useBaseSlideExecution({ slide, run, slideDone, duration });
+```
+
+Note that the "before" shape constructs the instance **during render**, so every render produced a
+fresh object whose `slideTimeout` was already `null` — the cleanup then called `stop()` on that new
+instance rather than the one holding the live timer, and the timer was never actually cleared. The
+hook keeps its timer in a ref, so cleanup cancels the right one. Templates that copied this pattern
+get the fix for free.
+
+`duration` is in milliseconds. The hook falls back to 15000 when it is missing or non-positive; the
+class had no fallback and passed the value straight to `setTimeout`, so a missing duration became
+`setTimeout(fn, undefined)` and advanced the slide immediately. The fallback is new behaviour, not
+parity — a template that relied on a missing `duration` skipping the slide will now hold for 15
+seconds.
+
+Templates that stepped through a list of entries themselves before calling `slideDone()` can hand
+that to `useMultipleEntrySlideExecution` (`{ entries, run, slide, slideDone, entryDuration }`), which
+returns `{ currentEntry, entryIndex }`. Both are `null` until the slide starts running, so guard on
+that rather than assuming index `0`.
+
+Checklist:
+
+- [ ] No custom template imports `base-slide-execution.js`.
+- [ ] Slides using converted templates advance on a screen (they lock the playlist if `slideDone()`
+      is never reached).
 
 #### Removed feed types
 

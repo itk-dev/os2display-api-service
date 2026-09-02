@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Moved the empty-feed fallback into `useMultipleEntrySlideExecution` so a template cannot lock a
+  playlist by omitting it, and started cycling when feed entries arrive after the slide did.
+- Fixed template fade timers being derived from an unclamped duration, which left an entry faded out
+  for the whole slide when the configured duration was zero.
+- Added `docs/client-scheduling.md` describing content selection, rotation and the `slideDone` contract.
+
 - Fixed the calendar template Playwright tests failing on the 31st of a month, where the fixed test
   clock rolled over into the following month.
 - Fixed the API-spec workflow failing on pull requests from forks, where the informational PR comment
@@ -33,6 +39,8 @@ All notable changes to this project will be documented in this file.
   groups and campaigns, and the playlist preview slides.
 - Fixed nginx serving JSON-LD API responses uncompressed.
 - Made Vite honor the `COMPOSE_DOMAIN` environment variable.
+- Made the shell scripts in `scripts/` POSIX sh and added a ShellCheck CI gate, so bash-only
+  syntax can no longer break developers whose `/bin/sh` is dash.
 - Made dev cert creation run on Linux.
 - Updated all Composer and npm dependencies, taking `composer audit` from 23 advisories to two and
   `npm audit` from 17 to two; the four that remain need the API Platform 4 and React Router 7 majors.
@@ -193,6 +201,20 @@ All notable changes to this project will be documented in this file.
 - Optimized release data fetching.
 - Optimized list loading.
 - Removed fixture length check from test.
+- Introduced two hooks (useBaseSlideExecution, useMultipleEntrySlideExecution) that are used in the templates in place
+  of BaseSlideExecution in fixed duration slides and manual iteration over entries in slides that iterate through
+  elements before calling slideDone.
+- Removed the `BaseSlideExecution` class (`assets/shared/slide-utils/base-slide-execution.js`), superseded by the
+  hooks above. Breaking for out-of-tree custom templates — see `UPGRADE.md`.
+- Fixed the first entry's timing being anchored to mount rather than to run: `useMultipleEntrySlideExecution` now
+  reports `entryIndex` as `null` until the slide starts, and clears its state again when it stops.
+- Fixed issue with Slideshow animations that would be locked to one type.
+- Fixed sorting in calendar "multiple" layout.
+- Fixed video progression issues. A rejected autoplay (which is what browsers do to a sound-enabled video) no longer
+  drops the slide instantly; the video shows controls and the duration guard progresses the playlist. The guard now
+  allows 10% plus five seconds for buffering stalls, and a separate 30 second guard covers a source that never reports
+  a usable duration. The duration guard is installed from `durationchange` as well as `loadedmetadata`, so sources that
+  report an infinite duration at first (fragmented WebM, streams) are no longer cut short.
 - Fixed video overflow.
 - Added vitest for frontend unit tests.
 - Added spinner when retrieving bind key.

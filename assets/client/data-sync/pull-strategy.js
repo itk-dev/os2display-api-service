@@ -23,9 +23,9 @@ class PullStrategy {
   // Screen checksums to compare the next pull against. Kept apart from
   // lastestScreenData because a pull that fell back to cached data must not be
   // credited with the server's fresh checksum for the part it failed to fetch,
-  // and the screen object itself cannot be edited to say so: ContentService
-  // hashes it to decide whether the screen changed, so any rewrite would look
-  // like a change and re-emit the screen on every pull.
+  // and the screen object must not carry that correction: relationsChecksum is
+  // handed to the client as the server sent it, not as what this pull happens to
+  // be entitled to compare against.
   lastestScreenChecksums;
 
   // Helper for all api calls.

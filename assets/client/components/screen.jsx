@@ -68,8 +68,13 @@ function Screen({ screen }) {
     });
   };
 
+  // Keyed on the flag, not the screen object: the screen is emitted on every pull,
+  // and re-running this strips color-scheme-* off the html element before an async
+  // config load puts it back - a theme flash whenever that load is not cached.
+  const enableColorSchemeChange = screen?.enableColorSchemeChange;
+
   useEffect(() => {
-    if (screen?.enableColorSchemeChange) {
+    if (enableColorSchemeChange) {
       logger.info("Enabling color scheme change.");
       refreshColorScheme();
       // Refresh color scheme every 5 minutes.
@@ -90,7 +95,7 @@ function Screen({ screen }) {
         "color-scheme-dark",
       );
     };
-  }, [screen]);
+  }, [enableColorSchemeChange]);
 
   return (
     <div className="screen" style={rootStyle} id={screen["@id"]}>

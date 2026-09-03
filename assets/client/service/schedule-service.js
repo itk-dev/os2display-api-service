@@ -22,6 +22,7 @@ class ScheduleService {
 
   constructor() {
     this.updateRegion = this.updateRegion.bind(this);
+    this.regionReady = this.regionReady.bind(this);
     this.checkForEmptyContent = this.checkForEmptyContent.bind(this);
     this.sendSlides = this.sendSlides.bind(this);
   }
@@ -44,6 +45,27 @@ class ScheduleService {
       );
       document.dispatchEvent(event);
     }
+  }
+
+  /**
+   * A region has mounted and is listening. Send it what is cached.
+   *
+   * updateRegion's hash gate exists to avoid re-sending content a region is
+   * already showing. A region that has only just mounted is showing nothing and
+   * missed whatever was dispatched before it registered its listener, so it gets
+   * the current slides regardless of the hash.
+   *
+   * @param {string} regionId - The region id.
+   */
+  regionReady(regionId) {
+    const cached = this.regions[regionId];
+
+    if (!cached) {
+      logger.info(`ScheduleService: no content cached for region ${regionId}.`);
+      return;
+    }
+
+    this.sendSlides(regionId, cached.slides);
   }
 
   /**
@@ -80,8 +102,19 @@ class ScheduleService {
     // Extract slides from playlists.
     const slides = ScheduleService.findScheduledSlides(region, regionId);
 
-    // Calculate a hash of the region to test if it has changed.
-    const hash = Base64.stringify(sha256(JSON.stringify({ region, slides })));
+    // Calculate a hash of the scheduled slides to test if they have changed.
+    //
+    // This gate stays, unlike the one ContentService used to have: that one only
+    // decided whether React re-rendered, this one decides whether new arrays are
+    // pushed into region state. It is also the only thing that notices a feed
+    // changed - feedData is refetched on every pull and carries no checksum, so
+    // nothing else can see it. That is why the whole slide payload is hashed and
+    // not just ids.
+    //
+    // The region itself is deliberately not part of the input: findScheduledSlides
+    // derives the slides from it, so anything that changes what is rendered shows
+    // up in slides anyway, and hashing both doubles the work for every pull.
+    const hash = Base64.stringify(sha256(JSON.stringify(slides)));
     const newContent = hash !== this?.regions[regionId]?.hash;
 
     // Update region.
@@ -130,15 +163,16 @@ class ScheduleService {
     // Extract slides from playlists.
     const slides = ScheduleService.findScheduledSlides(region.region, regionId);
 
-    // Calculate a hash of the region to test if it has changed.
-    const hash = Base64.stringify(
-      sha256(JSON.stringify({ region: region.region, slides })),
-    );
+    // Calculate a hash of the scheduled slides to test if they have changed.
+    const hash = Base64.stringify(sha256(JSON.stringify(slides)));
     const newContent = hash !== this?.regions[regionId]?.hash;
 
-    // Update region.
+    // Update region. The slides have to be stored under the same key updateRegion
+    // uses - regionReady replays them to a region that has just mounted, and a
+    // stale entry here would hand it the content from before the last schedule
+    // change.
     this.regions[regionId].hash = hash;
-    this.regions[regionId].slide = slides;
+    this.regions[regionId].slides = slides;
 
     if (newContent) {
       // Send slides to region.

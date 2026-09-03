@@ -136,7 +136,10 @@ function Region({ region }) {
     };
   }, []);
 
-  // Notify that region is ready.
+  // Notify that region is ready. Mount only: content is pushed by ScheduleService
+  // from here on, and asking again whenever the region prop changes identity was
+  // both redundant and unreliable - a pull that served the layout from cache
+  // hands back the same object, so the effect never ran (#507).
   useEffect(() => {
     const event = new CustomEvent("regionReady", {
       detail: {
@@ -144,7 +147,7 @@ function Region({ region }) {
       },
     });
     document.dispatchEvent(event);
-  }, [region]);
+  }, []);
 
   // Start the progress if no slide is currently playing.
   useEffect(() => {

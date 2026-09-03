@@ -33,6 +33,11 @@ All notable changes to this project will be documented in this file.
   no longer have a second one stacked on top of it (#507).
 - Added a timeout to the client config request, so a request that never answers can no longer stall
   the screen client's polling (#507).
+- Fixed the screen client showing stale playlist content until the layout happened to change, where a
+  pull that served the layout from cache handed the regions an unchanged object, so they never asked
+  for the slides the pull had just fetched (#507).
+- Removed a tenant config request and a colour-scheme rebuild that the screen client repeated on
+  every pull (#507).
 
 ## [3.0.0-rc8] - 2026-08-24
 

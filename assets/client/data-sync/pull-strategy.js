@@ -410,7 +410,34 @@ class PullStrategy {
 
         if (newScreen.layoutData === null) {
           report.layout = true;
-          logger.warn(`Could not load layout (${newScreen.layout}).`);
+
+          // Keep the last known good layout rather than none, the same trade
+          // getRegions makes. Screen builds its regions from layoutData.regions,
+          // so a null unmounts every one of them: regionRemoved drops the
+          // scheduling state, and the next good pull restarts playback from the
+          // first slide.
+          //
+          // Only the layout this screen actually wants, though. A previous pull
+          // in campaign mode holds the synthetic full-screen layout, and a pull
+          // from before the screen was moved to another layout holds regions
+          // that no longer match the regionData fetched below.
+          const previous = this.lastestScreenData;
+          const reusable =
+            previous?.layoutData != null &&
+            previous.hasActiveCampaign !== true &&
+            previous.layout === newScreen.layout;
+
+          if (reusable) {
+            logger.warn(
+              `Could not load layout (${newScreen.layout}). Keeping the previously loaded layout.`,
+            );
+
+            newScreen.layoutData = previous.layoutData;
+          } else {
+            logger.warn(
+              `Could not load layout (${newScreen.layout}) and have no earlier layout for it.`,
+            );
+          }
         }
       } else {
         // Get layout: Defines layout and regions.

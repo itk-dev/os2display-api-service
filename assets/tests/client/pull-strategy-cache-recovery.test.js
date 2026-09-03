@@ -298,6 +298,142 @@ describe("PullStrategy recovers from a degraded pull", () => {
     expect(slide.mediaData[mediaPath]).toEqual({ assets: {} });
   });
 
+  /**
+   * Serve a queue of responses per path, falling back to the last entry.
+   *
+   * @param {object} queues Screens and layouts, in pull order.
+   */
+  function wireLayoutQueue({ screens, layouts }) {
+    const screenQueue = [...screens];
+    const layoutQueue = [...layouts];
+
+    mockGetPath.mockImplementation((path) => {
+      if (path === screenPath) {
+        return Promise.resolve(
+          screenQueue.length > 1 ? screenQueue.shift() : screenQueue[0],
+        );
+      }
+
+      if (path.startsWith("/v2/layouts/")) {
+        return Promise.resolve(
+          layoutQueue.length > 1 ? layoutQueue.shift() : layoutQueue[0],
+        );
+      }
+
+      return Promise.resolve({ resources: {} });
+    });
+  }
+
+  const layout = {
+    "@id": layoutPath,
+    grid: { rows: 1, columns: 1 },
+    regions: [{ "@id": `/v2/layouts/regions/${REGION}`, gridArea: ["a"] }],
+  };
+
+  it("keeps the previously loaded layout when a later request for it fails", async () => {
+    // Screen builds its regions from layoutData.regions, so a null unmounts
+    // every one of them: the scheduling state is dropped and the next good pull
+    // restarts playback from the first slide. Content one pull out of date beats
+    // a black screen, the same trade getRegions makes.
+    wireApi();
+    wireLayoutQueue({
+      screens: [
+        buildScreen(checksums),
+        buildScreen({ ...checksums, layout: "layout-2" }),
+      ],
+      layouts: [layout, null],
+    });
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
+
+    await strategy.getScreen(screenPath);
+    await strategy.getScreen(screenPath);
+
+    expect(callsFor(mockGetPath, layoutPath)).toBe(2);
+    expect(strategy.lastestScreenData.layoutData).toEqual(layout);
+  });
+
+  it("does not fall back to the synthetic layout of a campaign pull", async () => {
+    // Campaign mode swaps in a full-screen layout with one hardcoded region.
+    // Reusing it once the campaign is over would leave the client rendering a
+    // region no playlist is scheduled for.
+    wireApi();
+    wireLayoutQueue({
+      screens: [
+        buildScreen(checksums),
+        // Ending the campaign moves its checksum too, otherwise the second pull
+        // serves campaignsData from cache and never leaves campaign mode.
+        buildScreen({
+          ...checksums,
+          layout: "layout-2",
+          campaigns: "campaigns-2",
+        }),
+      ],
+      // Campaign mode builds its layout rather than fetching one, so the only
+      // layout request in this test is the failing one on the second pull.
+      layouts: [null],
+    });
+
+    const campaigns = [
+      collection(campaignsPath, [
+        {
+          campaign: {
+            "@id": `/v2/playlists/${PLAYLIST}`,
+            published: { from: null, to: null },
+            slides: slidesPath,
+          },
+        },
+      ]),
+      collection(campaignsPath, []),
+    ];
+
+    const previousGetAll = mockGetAllResultsFromPath.getMockImplementation();
+
+    mockGetAllResultsFromPath.mockImplementation((path) => {
+      if (path === campaignsPath) {
+        return Promise.resolve(
+          campaigns.length > 1 ? campaigns.shift() : campaigns[0],
+        );
+      }
+
+      return previousGetAll(path);
+    });
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
+
+    await strategy.getScreen(screenPath);
+    expect(strategy.lastestScreenData.hasActiveCampaign).toBe(true);
+
+    await strategy.getScreen(screenPath);
+
+    expect(strategy.lastestScreenData.hasActiveCampaign).toBe(false);
+    expect(strategy.lastestScreenData.layoutData).toBeNull();
+  });
+
+  it("does not fall back to the layout the screen has been moved away from", async () => {
+    const otherLayoutPath = "/v2/layouts/01HRZ3NDEKTSV4RRFFQ69G5FAV";
+
+    wireApi();
+    wireLayoutQueue({
+      screens: [
+        buildScreen(checksums),
+        {
+          ...buildScreen({ ...checksums, layout: "layout-2" }),
+          layout: otherLayoutPath,
+        },
+      ],
+      layouts: [layout, null],
+    });
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
+
+    await strategy.getScreen(screenPath);
+    await strategy.getScreen(screenPath);
+
+    // The old layout's regions do not match the regionData this pull fetched.
+    expect(strategy.lastestScreenData.layoutData).toBeNull();
+  });
+
   it("keeps the template cached when nothing failed", async () => {
     wireApi({ slide: buildSlide([mediaPath]) });
 

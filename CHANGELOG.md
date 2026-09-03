@@ -38,6 +38,10 @@ All notable changes to this project will be documented in this file.
   for the slides the pull had just fetched (#507).
 - Removed a tenant config request and a colour-scheme rebuild that the screen client repeated on
   every pull (#507).
+- Fixed a failed layout request blanking the screen client, where every region was unmounted and
+  playback restarted from the first slide on the next successful pull (#507). The last known good
+  layout is kept instead, unless it belongs to a campaign or to a layout the screen has since been
+  moved away from.
 
 ## [3.0.0-rc8] - 2026-08-24
 

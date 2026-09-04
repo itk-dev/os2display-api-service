@@ -10,6 +10,10 @@ All notable changes to this project will be documented in this file.
 - Fixed a slide whose template the client cannot resolve taking down its whole region: the error was
   thrown before the slide's own error boundary mounted, so the region's boundary caught it instead
   and, having no way to reset, showed the error fallback until the client was reloaded.
+- Fixed a region locking up when a slide signalled `slideDone()` in the same millisecond it started;
+  the run id is now a counter rather than a timestamp.
+- Added a minimum dwell before a region acts on `slideDone()`, so a template that finishes while
+  mounting — a video slide with no playable media — can no longer spin the region.
 - Moved the empty-feed fallback into `useMultipleEntrySlideExecution` so a template cannot lock a
   playlist by omitting it, and started cycling when feed entries arrive after the slide did.
 - Fixed template fade timers being derived from an unclamped duration, which left an entry faded out

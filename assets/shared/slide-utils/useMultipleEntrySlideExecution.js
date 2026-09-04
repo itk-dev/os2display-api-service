@@ -15,7 +15,7 @@ const DEFAULT_EMPTY_ENTRIES_DURATION = 1000;
  *
  * @param {object} options
  * @param {Array} options.entries Array of entries to cycle through.
- * @param {string|null} options.run Run token: falsy means "do not run", and a
+ * @param {number|null} options.run Run token: falsy means "do not run", and a
  *   new truthy value restarts cycling without a remount.
  * @param {object} options.slide The slide object.
  * @param {Function} options.slideDone Callback when cycling completes.

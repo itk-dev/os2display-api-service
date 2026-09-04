@@ -21,7 +21,7 @@ function config() {
 /**
  * Render the slide.
  * @param {object} slide The slide data.
- * @param {string} run A date string set when the slide should start running.
+ * @param {number} run Run id. Changes each time the slide should run.
  * @param slideDone A function to invoke when the slide is done playing.
  * @return {JSX.Element} The component.
  */
@@ -41,7 +41,7 @@ function renderSlide(slide, run, slideDone) {
  * @param {object} props Props.
  * @param {object} props.slide The slide.
  * @param {object} props.content The slide content.
- * @param {string} props.run A date string set when the slide should start running.
+ * @param {number} props.run Run id. Changes each time the slide should run.
  * @param {Function} props.slideDone A function to invoke when the slide is done playing.
  * @param {string} props.executionId A unique id for the instance.
  * @returns {JSX.Element} The component.

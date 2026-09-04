@@ -1,5 +1,3 @@
-import sha256 from "crypto-js/sha256";
-import Base64 from "crypto-js/enc-base64";
 import PullStrategy from "../data-sync/pull-strategy";
 import {
   screenForPlaylistPreview,
@@ -9,6 +7,7 @@ import logger from "../logger/logger";
 import DataSync from "../data-sync/data-sync";
 import ScheduleService from "./schedule-service";
 import ClientConfigLoader from "../util/client-config-loader.js";
+import templateDataFromSlide from "../util/template-data-from-slide.js";
 
 /**
  * ContentService.
@@ -21,8 +20,6 @@ class ContentService {
   currentScreen;
 
   scheduleService;
-
-  screenHash;
 
   /**
    * Constructor.
@@ -110,33 +107,28 @@ class ContentService {
   contentHandler(event) {
     logger.info("Event received: content");
 
-    const data = event.detail;
-    this.currentScreen = data.screen;
+    this.currentScreen = event.detail.screen;
 
+    const { regionData } = this.currentScreen;
+
+    // Push before emitting. A pull that served the layout from cache hands back
+    // the very same region objects, so a region cannot be relied on to notice
+    // the new content itself - that is what left playlists stale (#507).
+    // Pushing first also means the cache is populated before a region mounted by
+    // the emit below asks for it in regionReady.
+    // eslint-disable-next-line no-restricted-syntax
+    for (const regionKey of Object.keys(regionData ?? {})) {
+      this.scheduleService.updateRegion(regionKey, regionData[regionKey]);
+    }
+
+    // Regions are fed through ScheduleService, so the screen goes out without
+    // them. Emitted unconditionally: re-rendering is cheap because Screen keys
+    // its regions by id, so React reconciles them in place and playback state
+    // survives.
     const screenData = { ...this.currentScreen };
+    delete screenData.regionData;
 
-    // Remove regionData to only emit screen when it has changed.
-    for (let i = 0; i < screenData.regions.length; i += 1) {
-      delete screenData.regionData;
-    }
-
-    const newHash = Base64.stringify(sha256(JSON.stringify(screenData)));
-
-    // TODO: Handle issue where region data is not present for a given region. Remove given region content.
-
-    if (newHash !== this.screenHash) {
-      logger.info("Screen has changed. Emitting screen.");
-      this.screenHash = newHash;
-      ContentService.emitScreen(screenData);
-    } else {
-      logger.info("Screen has not changed. Not emitting screen.");
-
-      // eslint-disable-next-line guard-for-in,no-restricted-syntax
-      for (const regionKey in data.screen.regionData) {
-        const region = this.currentScreen.regionData[regionKey];
-        this.scheduleService.updateRegion(regionKey, region);
-      }
-    }
+    ContentService.emitScreen(screenData);
   }
 
   /**
@@ -151,12 +143,30 @@ class ContentService {
 
     logger.info(`Event received: regionReady for ${regionId}`);
 
-    if (this.currentScreen) {
-      this.scheduleService.updateRegion(
-        regionId,
-        this.currentScreen.regionData[regionId],
-      );
+    // A region that changes type - default <-> touch-buttons under the same
+    // region id - is a different component, so Screen unmounts one and mounts
+    // the other in a single commit. React runs the old component's cleanup
+    // before the new one's effects, so regionRemoved has already dropped the
+    // cached slides and cleared the scheduling interval by the time regionReady
+    // asks for them. The region would then show nothing until the next pull
+    // happened to change its content - up to the pull interval of blank screen.
+    //
+    // Rebuild from the screen the last pull delivered instead. updateRegion
+    // caches the slides, re-registers the interval and sends the slides on,
+    // which is everything regionReady would have done.
+    if (!this.scheduleService.hasRegion(regionId)) {
+      const regionData = this.currentScreen?.regionData?.[regionId];
+
+      if (regionData !== undefined) {
+        logger.info(`Restoring content for remounted region ${regionId}.`);
+
+        this.scheduleService.updateRegion(regionId, regionData);
+
+        return;
+      }
     }
+
+    this.scheduleService.regionReady(regionId);
   }
 
   /**
@@ -271,7 +281,7 @@ class ContentService {
 
   static async attachReferencesToSlide(strategy, slide) {
     /* eslint-disable no-param-reassign */
-    slide.templateData = await strategy.getTemplateData(slide);
+    slide.templateData = templateDataFromSlide(slide);
     slide.feedData = await strategy.getFeedData(slide);
 
     slide.mediaData = {};

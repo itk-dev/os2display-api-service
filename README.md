@@ -753,7 +753,7 @@ compose `environment:` with defaults in `infrastructure/nginx/Dockerfile`:
 | `NGINX_RATE_LIMIT_BURST` | Requests allowed to exceed the rate before rejection | `500` |
 
 Size these for the screen client, not for a browser. One pull from a screen on a multi-region layout is
-a burst of one request per region, playlist, slide, template, media and feed — easily a few hundred
+a burst of one request per region, playlist, slide, media and feed — easily a few hundred
 requests within a couple of seconds. Setting the limit too low makes regions and images randomly fail to
 render.
 

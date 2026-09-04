@@ -3,6 +3,7 @@ import { createGridArea } from "../../shared/grid-generator/grid-generator";
 import { TransitionGroup, CSSTransition } from "react-transition-group";
 import ErrorBoundary from "./error-boundary.jsx";
 import idFromPath from "../util/id-from-path";
+import isRenderableSlide from "../util/is-renderable-slide";
 import logger from "../logger/logger";
 import Slide, { MIN_SLIDE_DWELL_MS } from "./slide.jsx";
 import nextRunId from "../../shared/slide-utils/next-run-id.js";
@@ -105,8 +106,9 @@ function Region({ region }) {
   function regionContentListener(event) {
     const receivedSlides = [...event.detail.slides];
 
-    // Filter out invalid slides.
-    setNewSlides(receivedSlides.filter((slide) => !slide.invalid));
+    // Filter out invalid slides. Shared with ScheduleService.checkForEmptyContent
+    // so the two cannot disagree about what counts as content.
+    setNewSlides(receivedSlides.filter(isRenderableSlide));
   }
 
   // Setup event listener for region content.
@@ -137,7 +139,10 @@ function Region({ region }) {
     };
   }, []);
 
-  // Notify that region is ready.
+  // Notify that region is ready. Mount only: content is pushed by ScheduleService
+  // from here on, and asking again whenever the region prop changes identity was
+  // both redundant and unreliable - a pull that served the layout from cache
+  // hands back the same object, so the effect never ran (#507).
   useEffect(() => {
     const event = new CustomEvent("regionReady", {
       detail: {
@@ -145,7 +150,7 @@ function Region({ region }) {
       },
     });
     document.dispatchEvent(event);
-  }, [region]);
+  }, []);
 
   // Start the progress if no slide is currently playing.
   useEffect(() => {

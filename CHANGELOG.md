@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed a region that changes type — between the default and touch-button renderers under the same
+  region id — going blank until the next pull delivered different content, because the outgoing
+  component's cleanup dropped the region's scheduled slides before the incoming one asked for them.
+- Fixed absent slides counting as content, which suppressed the fallback image and left the screen
+  black on a region that held nothing else.
+- Fixed the screen client caching an error response as its configuration, which left `apiEndpoint`
+  undefined for the whole config interval and so failed every request made in it.
+- Removed the screen client's template requests. Templates are bundled into the client, and the only
+  thing it took from `/v2/templates/{id}` was the id already carried by the slide, so the request
+  cost one round trip per template per pull and emptied a region whenever it was throttled (#507).
+- Fixed a slide whose template the client cannot resolve taking down its whole region: the error was
+  thrown before the slide's own error boundary mounted, so the region's boundary caught it instead
+  and, having no way to reset, showed the error fallback until the client was reloaded.
 - Fixed the screen client treating a collection cut short by the 100-page backstop as a complete one,
   which cached the truncated data behind the server's checksum until an editor changed the content
   (#507). The collection is now given up, the same as when a page request fails.
@@ -34,6 +47,28 @@ All notable changes to this project will be documented in this file.
   `NGINX_RATE_LIMIT_BURST` and answers `429` instead of `503`.
 - Made the screen client retry throttled and temporarily failing API requests with backoff, and
   bounded how many requests one pull may have in flight (#507).
+- Fixed the screen client caching a partially failed pull as if it were complete, which left a
+  region, layout or media item stale until someone edited the content in the admin (#507).
+- Made the screen client wait for a pull to finish before starting the next one, so a slow pull can
+  no longer have a second one stacked on top of it (#507).
+- Added a timeout to the client config request, so a request that never answers can no longer stall
+  the screen client's polling (#507).
+- Fixed the screen client showing stale playlist content until the layout happened to change, where a
+  pull that served the layout from cache handed the regions an unchanged object, so they never asked
+  for the slides the pull had just fetched (#507).
+- Removed a tenant config request and a colour-scheme rebuild that the screen client repeated on
+  every pull (#507).
+- Fixed a failed layout request blanking the screen client, where every region was unmounted and
+  playback restarted from the first slide on the next successful pull (#507). The last known good
+  layout is kept instead, unless it belongs to a campaign or to a layout the screen has since been
+  moved away from.
+- Fixed the screen client suppressing the fallback image while showing nothing, where slides the
+  regions had dropped were still counted as content, so a screen with no renderable slides went
+  black instead (#507).
+- Fixed a failed slides request emptying a playlist whose region had loaded fine, which lost that
+  playlist's content for a whole pull (#507). The slides the previous pull loaded are kept instead.
+- Fixed the screen client pairing slides and playlists with the previous pull by position rather
+  than by id, so reordering a playlist in the admin could pair a slide with another slide's media.
 
 ## [3.0.0-rc8] - 2026-08-24
 

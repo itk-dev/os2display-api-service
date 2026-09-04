@@ -276,12 +276,17 @@ function App({ preview, previewId }) {
     };
   }, []);
 
+  // Keyed on the id, not the screen object: the screen is emitted on every pull,
+  // and loadTenantConfig is an api request - one per pull is the fan-out #507 is
+  // about.
+  const screenId = screen?.["@id"];
+
   useEffect(() => {
-    if (screen && screen["@id"]) {
-      releaseService.setScreenIdInUrl(screen["@id"]);
+    if (screenId) {
+      releaseService.setScreenIdInUrl(screenId);
       tenantService.loadTenantConfig();
     }
-  }, [screen]);
+  }, [screenId]);
 
   return (
     <div className="app" style={appStyle}>

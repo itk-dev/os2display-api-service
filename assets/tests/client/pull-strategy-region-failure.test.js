@@ -123,3 +123,39 @@ describe("PullStrategy.getRegions with a failed region request", () => {
     expect(Object.keys(regionData)).toEqual([REGION_A]);
   });
 });
+
+describe("PullStrategy.getSlidesForRegions", () => {
+  const slidesPath = "/v2/playlists/1/slides";
+
+  beforeEach(() => {
+    mockGetAllResultsFromPath.mockReset();
+    mockLogger.warn.mockReset();
+  });
+
+  it("drops a playlist row whose slide relation is absent", async () => {
+    // A row with no slide maps to undefined, and getScreen's relations loop
+    // writes templateData onto every entry. Assigning to undefined throws, and
+    // nothing between there and pull()'s catch handles it, so one broken row
+    // aborted the whole pull - the screen kept its last content on every pull
+    // after, which is the freeze this whole series of fixes is about (#507).
+    mockGetAllResultsFromPath.mockResolvedValue({
+      path: slidesPath,
+      results: [
+        { slide: { "@id": "/v2/slides/a", title: "a" } },
+        { slide: null },
+        {},
+        { slide: { "@id": "/v2/slides/b", title: "b" } },
+      ],
+      keys: {},
+    });
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: "" });
+    const regionData = await strategy.getSlidesForRegions({
+      [REGION_A]: [{ "@id": "/v2/playlists/1", slides: slidesPath }],
+    });
+
+    expect(
+      regionData[REGION_A][0].slidesData.map((slide) => slide.title),
+    ).toEqual(["a", "b"]);
+  });
+});

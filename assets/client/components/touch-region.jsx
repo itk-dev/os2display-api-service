@@ -97,7 +97,7 @@ function TouchRegion({ region }) {
     };
   }, []);
 
-  // Notify that region is ready.
+  // Notify that region is ready. Mount only, see Region.
   useEffect(() => {
     const event = new CustomEvent("regionReady", {
       detail: {
@@ -105,7 +105,7 @@ function TouchRegion({ region }) {
       },
     });
     document.dispatchEvent(event);
-  }, [region]);
+  }, []);
 
   // Make sure current slide is set.
   useEffect(() => {

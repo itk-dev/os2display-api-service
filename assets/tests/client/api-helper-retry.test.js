@@ -250,3 +250,61 @@ describe("ApiHelper.getPath retries throttled requests", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("ApiHelper.retryDelay spreads a Retry-After", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * A response carrying a Retry-After header.
+   *
+   * @param {string} value The header value.
+   * @returns {object} A response-alike.
+   */
+  function withRetryAfter(value) {
+    return { headers: new Headers({ "Retry-After": value }) };
+  }
+
+  it("waits at least as long as the server asked", () => {
+    // RFC 9110 makes Retry-After a minimum, so the jitter is added rather than
+    // subtracted - a client must never come back early.
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    expect(ApiHelper.retryDelay(withRetryAfter("5"), 0)).toBeGreaterThanOrEqual(
+      5000,
+    );
+  });
+
+  it("does not hand every client the same wait", () => {
+    // Everyone rejected in the same second gets the same header value, so
+    // honouring it verbatim re-synchronises the burst it exists to spread.
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+
+    const delay = ApiHelper.retryDelay(withRetryAfter("5"), 0);
+
+    expect(delay).toBeGreaterThan(5000);
+    expect(delay).toBeLessThan(5500);
+  });
+
+  it("keeps the jitter inside the clamp for an absurd Retry-After", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+
+    const delay = ApiHelper.retryDelay(withRetryAfter("3600"), 0);
+
+    expect(delay).toBeGreaterThan(30000);
+    expect(delay).toBeLessThan(30500);
+  });
+
+  it("falls back to backoff for an HTTP-date Retry-After", () => {
+    // parseInt turns a date into NaN; the backoff is the acceptable degradation.
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+
+    const delay = ApiHelper.retryDelay(
+      withRetryAfter("Wed, 21 Oct 2026 07:28:00 GMT"),
+      0,
+    );
+
+    expect(delay).toBeLessThan(500);
+  });
+});

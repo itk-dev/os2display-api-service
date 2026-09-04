@@ -4,6 +4,27 @@ import { renderSlide } from "../../shared/slide-utils/templates.js";
 import "./slide.scss";
 
 /**
+ * Render the slide's template.
+ *
+ * A component rather than a call in Slide's own render: renderSlide throws when
+ * the slide names a template this build does not bundle, and an argument is
+ * evaluated before ErrorBoundary mounts. The throw escaped the boundary meant
+ * to contain it and hit the region's instead, which has no handler and never
+ * resets - so one unrenderable slide replaced its whole region with the error
+ * fallback until the client was reloaded. Thrown from inside the boundary's
+ * subtree it costs that one slide, which is then moved on from.
+ *
+ * @param {object} props - Props.
+ * @param {object} props.slide - The slide data.
+ * @param {string} props.run - Timestamp for when to run the slide.
+ * @param {Function} props.slideDone - The function to call when the slide is done running.
+ * @returns {object} - The rendered template.
+ */
+function SlideTemplate({ slide, run, slideDone }) {
+  return renderSlide(slide, run, slideDone);
+}
+
+/**
  * Slide component.
  *
  * @param {object} props - Props.
@@ -39,7 +60,7 @@ function Slide({ slide, id, run, slideDone, slideError, forwardRef }) {
       data-execution-id={slide.executionId}
     >
       <ErrorBoundary errorHandler={handleError}>
-        {renderSlide(slide, run, slideDone)}
+        <SlideTemplate slide={slide} run={run} slideDone={slideDone} />
       </ErrorBoundary>
     </div>
   );

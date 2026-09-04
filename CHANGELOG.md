@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed a slide whose template the client cannot resolve taking down its whole region: the error was
+  thrown before the slide's own error boundary mounted, so the region's boundary caught it instead
+  and, having no way to reset, showed the error fallback until the client was reloaded.
 - Moved the empty-feed fallback into `useMultipleEntrySlideExecution` so a template cannot lock a
   playlist by omitting it, and started cycling when feed entries arrive after the slide did.
 - Fixed template fade timers being derived from an unclamped duration, which left an entry faded out

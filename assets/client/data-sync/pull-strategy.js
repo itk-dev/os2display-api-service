@@ -13,6 +13,14 @@ import templateDataFromSlide from "../util/template-data-from-slide.js";
 // means the retry layer rarely has to do anything.
 const MAX_CONCURRENT_REQUESTS = 6;
 
+// Stored in place of a checksum the pull is not entitled to keep, so the group
+// is refetched next time. A fresh symbol is unequal to every string the server
+// can send *and* to every other symbol, which null is not: the API answers null
+// for a group whose relation map is empty, and null === null would take the
+// cached branch - the freeze this sentinel exists to prevent. Only in memory,
+// so it never has to survive serialisation.
+const CHECKSUM_UNAVAILABLE = () => Symbol("checksum-unavailable");
+
 /**
  * PullStrategy.
  *
@@ -300,9 +308,14 @@ class PullStrategy {
         return;
       }
 
-      playlist.slidesData = result.value.results.map(
-        (playlistSlide) => playlistSlide.slide,
-      );
+      // Dropped rather than carried as a hole in the array. A PlaylistSlide
+      // whose slide relation is absent maps to undefined, and the relations
+      // loop in getScreen writes templateData onto every entry - which throws
+      // on undefined and takes the entire pull with it, so one broken row in
+      // one playlist froze the whole screen on its last content, every pull.
+      playlist.slidesData = result.value.results
+        .map((playlistSlide) => playlistSlide.slide)
+        .filter((slide) => slide != null);
     });
 
     return regionData;
@@ -330,16 +343,16 @@ class PullStrategy {
 
     if (report.campaigns) {
       // One getCampaignsData call covers both, so neither can be trusted.
-      stored.campaigns = null;
-      stored.inScreenGroups = null;
+      stored.campaigns = CHECKSUM_UNAVAILABLE();
+      stored.inScreenGroups = CHECKSUM_UNAVAILABLE();
     }
 
     if (report.layout) {
-      stored.layout = null;
+      stored.layout = CHECKSUM_UNAVAILABLE();
     }
 
     if (report.regions) {
-      stored.regions = null;
+      stored.regions = CHECKSUM_UNAVAILABLE();
     }
 
     return stored;

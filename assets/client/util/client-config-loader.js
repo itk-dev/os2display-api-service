@@ -84,6 +84,15 @@ const ClientConfigLoader = {
   async fetchConfig(nowTimestamp) {
     try {
       const response = await fetchWithTimeout(`/config/client`);
+
+      // An error body is not config. fetch only rejects on transport failure,
+      // so without this a 4xx/5xx payload that happens to parse as JSON is
+      // stored as the config and served for the whole config interval - with
+      // apiEndpoint undefined, which takes every later request with it.
+      if (!response.ok) {
+        throw new Error(`Config request answered ${response.status}.`);
+      }
+
       const data = await response.json();
 
       latestFetchTimestamp = nowTimestamp;

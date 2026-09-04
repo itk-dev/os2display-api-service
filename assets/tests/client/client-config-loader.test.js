@@ -42,6 +42,7 @@ describe("ClientConfigLoader", () => {
 
   it("fetches the config on the first call", async () => {
     fetchMock.mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ relationsChecksumEnabled: true }),
     });
 
@@ -56,6 +57,7 @@ describe("ClientConfigLoader", () => {
 
   it("caches the response across repeated calls", async () => {
     fetchMock.mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ relationsChecksumEnabled: true }),
     });
 
@@ -86,6 +88,7 @@ describe("ClientConfigLoader", () => {
     vi.setSystemTime(0);
 
     fetchMock.mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ relationsChecksumEnabled: true }),
     });
 
@@ -114,6 +117,7 @@ describe("ClientConfigLoader", () => {
 
     // And a later call tries again instead of returning the stalled promise.
     fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ relationsChecksumEnabled: true }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -122,5 +126,71 @@ describe("ClientConfigLoader", () => {
       relationsChecksumEnabled: true,
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to the default config on an error response", async () => {
+    // fetch only rejects on transport failure, so a 500 whose body happens to
+    // parse as JSON was stored as the config and served for the whole config
+    // interval - with apiEndpoint undefined, taking every request with it.
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: "Internal Server Error" }),
+    });
+
+    const { default: ClientConfigLoader } = await import(loaderPath);
+
+    await expect(ClientConfigLoader.loadConfig()).resolves.toMatchObject({
+      apiEndpoint: "/api",
+    });
+  });
+
+  it("does not cache an error response", async () => {
+    // Nothing was stored, so the next call goes back to the network rather than
+    // waiting out the config interval on a fallback.
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      json: () => Promise.resolve({}),
+    });
+
+    const { default: ClientConfigLoader } = await import(loaderPath);
+
+    await ClientConfigLoader.loadConfig();
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ relationsChecksumEnabled: true }),
+    });
+
+    await expect(ClientConfigLoader.loadConfig()).resolves.toMatchObject({
+      relationsChecksumEnabled: true,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the last known good config when a later request errors", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ apiEndpoint: "/real-api" }),
+    });
+
+    const { default: ClientConfigLoader } = await import(loaderPath);
+
+    await ClientConfigLoader.loadConfig();
+
+    // Past the config interval, so the next call refetches.
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.now() + 16 * 60 * 1000);
+
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 502,
+      json: () => Promise.resolve({}),
+    });
+
+    await expect(ClientConfigLoader.loadConfig()).resolves.toMatchObject({
+      apiEndpoint: "/real-api",
+    });
   });
 });

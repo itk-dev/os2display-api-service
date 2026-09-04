@@ -74,6 +74,16 @@ class ScheduleService {
   }
 
   /**
+   * Whether slides are cached for a region.
+   *
+   * @param {string} regionId - The region id.
+   * @returns {boolean} True if the region has cached content.
+   */
+  hasRegion(regionId) {
+    return Object.prototype.hasOwnProperty.call(this.regions, regionId);
+  }
+
+  /**
    * Remove scheduling interval for region if region is removed.
    *
    * @param {string} regionId - The region id.

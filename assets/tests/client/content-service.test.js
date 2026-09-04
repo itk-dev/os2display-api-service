@@ -175,6 +175,62 @@ describe("ContentService", () => {
     expect(regionSends[0].map((slide) => slide.title)).toEqual(["a"]);
   });
 
+  it("restores content for a region that unmounted and remounted", async () => {
+    // Changing a region's type swaps the component behind an unchanged region
+    // id, so Screen unmounts one and mounts the other in a single commit and
+    // React runs the outgoing cleanup before the incoming effects. regionReady
+    // therefore arrives with the cache regionRemoved has just dropped, and the
+    // region showed nothing until a later pull happened to change its content.
+    const layoutData = { grid: { rows: 1, columns: 1 }, regions: [] };
+
+    dispatchContent(
+      buildScreen({
+        slideTitles: ["a"],
+        layoutData,
+        regionsChecksum: "abc",
+      }),
+    );
+
+    expect(regionSends).toHaveLength(1);
+
+    document.dispatchEvent(
+      new CustomEvent("regionRemoved", { detail: { id: REGION_ID } }),
+    );
+    document.dispatchEvent(
+      new CustomEvent("regionReady", { detail: { id: REGION_ID } }),
+    );
+
+    expect(regionSends).toHaveLength(2);
+    expect(regionSends[1].map((slide) => slide.title)).toEqual(["a"]);
+
+    // regionRemoved cleared the scheduling interval too, so it has to come back
+    // with the content or the region never picks up a schedule change again.
+    await vi.waitFor(() =>
+      expect(contentService.scheduleService.intervals[REGION_ID]).toBeDefined(),
+    );
+  });
+
+  it("sends nothing for a region the current screen does not have", () => {
+    const layoutData = { grid: { rows: 1, columns: 1 }, regions: [] };
+
+    dispatchContent(
+      buildScreen({
+        slideTitles: ["a"],
+        layoutData,
+        regionsChecksum: "abc",
+      }),
+    );
+
+    document.dispatchEvent(
+      new CustomEvent("regionRemoved", { detail: { id: "unknown-region" } }),
+    );
+    document.dispatchEvent(
+      new CustomEvent("regionReady", { detail: { id: "unknown-region" } }),
+    );
+
+    expect(regionSends).toHaveLength(1);
+  });
+
   it("survives a screen with no regionData", () => {
     const layoutData = { grid: { rows: 1, columns: 1 }, regions: [] };
     const screen = buildScreen({

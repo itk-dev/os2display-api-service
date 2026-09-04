@@ -143,6 +143,29 @@ class ContentService {
 
     logger.info(`Event received: regionReady for ${regionId}`);
 
+    // A region that changes type - default <-> touch-buttons under the same
+    // region id - is a different component, so Screen unmounts one and mounts
+    // the other in a single commit. React runs the old component's cleanup
+    // before the new one's effects, so regionRemoved has already dropped the
+    // cached slides and cleared the scheduling interval by the time regionReady
+    // asks for them. The region would then show nothing until the next pull
+    // happened to change its content - up to the pull interval of blank screen.
+    //
+    // Rebuild from the screen the last pull delivered instead. updateRegion
+    // caches the slides, re-registers the interval and sends the slides on,
+    // which is everything regionReady would have done.
+    if (!this.scheduleService.hasRegion(regionId)) {
+      const regionData = this.currentScreen?.regionData?.[regionId];
+
+      if (regionData !== undefined) {
+        logger.info(`Restoring content for remounted region ${regionId}.`);
+
+        this.scheduleService.updateRegion(regionId, regionData);
+
+        return;
+      }
+    }
+
     this.scheduleService.regionReady(regionId);
   }
 

@@ -207,6 +207,32 @@ class PullStrategy {
   }
 
   /**
+   * The playlist this region held on the previous pull.
+   *
+   * Matched on @id rather than on the position in the region: playlists get
+   * added, removed and reordered between pulls, and handing a playlist another
+   * playlist's slides is worse than handing it none - the same reasoning
+   * getRegions applies when it pairs region ids with their requests up front.
+   *
+   * @param {string} regionId The region the playlist belongs to.
+   * @param {string} playlistId The playlist's @id.
+   * @returns {object|undefined} The playlist, if the previous pull had it.
+   */
+  previousPlaylist(regionId, playlistId) {
+    if (playlistId === undefined) {
+      return undefined;
+    }
+
+    const previousRegion = this.lastestScreenData?.regionData?.[regionId];
+
+    if (!Array.isArray(previousRegion)) {
+      return undefined;
+    }
+
+    return previousRegion.find((playlist) => playlist["@id"] === playlistId);
+  }
+
+  /**
    * Get slides for the given regions.
    *
    * @param {object} regions Regions to fetch slides for.
@@ -238,6 +264,7 @@ class PullStrategy {
 
     results.forEach((result, index) => {
       const { regionKey, playlistKey } = entries[index];
+      const playlist = regionData[regionKey][playlistKey];
 
       if (
         result.status !== "fulfilled" ||
@@ -245,16 +272,34 @@ class PullStrategy {
       ) {
         report.regions = true;
 
-        // Leave slidesData alone: cloneDeep kept whatever the previous pull
-        // attached, which is better than an empty playlist.
+        // Keep the last known good slides for this playlist rather than none,
+        // the same trade getRegions and the layout branch make. cloneDeep only
+        // carried slidesData over when the playlists themselves came from the
+        // previous pull - the getRegions fallback or the cache branch. In the
+        // normal path they are fresh API objects that never had it, so without
+        // this the playlist empties for a whole pull.
+        const previous = this.previousPlaylist(regionKey, playlist["@id"]);
+
+        if (previous?.slidesData !== undefined) {
+          logger.warn(
+            `Could not load slides for playlist ${playlistKey} in region ${regionKey}. Keeping the previously loaded slides.`,
+          );
+
+          // Cloned so newScreen does not share the array with lastestScreenData:
+          // the relations loop below writes back into it in place.
+          playlist.slidesData = cloneDeep(previous.slidesData);
+
+          return;
+        }
+
         logger.warn(
-          `Could not load slides for playlist ${playlistKey} in region ${regionKey}.`,
+          `Could not load slides for playlist ${playlistKey} in region ${regionKey} and have no earlier slides for it.`,
         );
 
         return;
       }
 
-      regionData[regionKey][playlistKey].slidesData = result.value.results.map(
+      playlist.slidesData = result.value.results.map(
         (playlistSlide) => playlistSlide.slide,
       );
     });
@@ -478,25 +523,28 @@ class PullStrategy {
         // this guard the whole pull rejects and every region goes blank.
         const dataEntrySlidesData = dataEntryPlaylist.slidesData ?? {};
 
+        // Looked up once per playlist rather than once per slide.
+        const previousPlaylist = this.previousPlaylist(
+          regionKey,
+          dataEntryPlaylist["@id"],
+        );
+
         for (const slideKey of Object.keys(dataEntrySlidesData)) {
           const slide = cloneDeep(dataEntrySlidesData[slideKey]);
 
-          let previousSlide = null;
+          // Find the slide in previous data for comparing relationsChecksum
+          // values, and for the template fallback below. Matched on @id, not on
+          // position: an editor reordering a playlist would otherwise pair a
+          // slide with a different slide's relations, and the fallback would
+          // hand it that slide's template. Rendering the wrong template is
+          // worse than rendering none.
+          const previousSlideSource = previousPlaylist?.slidesData?.find(
+            (candidate) => candidate["@id"] === slide["@id"],
+          );
 
-          // Find the slide in previous data for comparing relationsChecksum values.
-          if (
-            this.lastestScreenData?.regionData[regionKey] &&
-            this.lastestScreenData.regionData[regionKey][playlistKey] &&
-            this.lastestScreenData.regionData[regionKey][playlistKey]
-              .slidesData[slideKey]
-          ) {
-            previousSlide = cloneDeep(
-              this.lastestScreenData.regionData[regionKey][playlistKey]
-                .slidesData[slideKey],
-            );
-          } else {
-            previousSlide = {};
-          }
+          const previousSlide = previousSlideSource
+            ? cloneDeep(previousSlideSource)
+            : {};
 
           // Null rather than [] for the same reason as the screen checksums
           // above: two empty maps compare equal on every key.

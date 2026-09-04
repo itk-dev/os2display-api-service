@@ -116,10 +116,12 @@ describe("PullStrategy recovers from a degraded pull", () => {
     regionResponses = null,
     templateResponses = null,
     mediaResponses = null,
+    slidesResponses = null,
   } = {}) {
     const regionQueue = regionResponses ? [...regionResponses] : null;
     const templateQueue = templateResponses ? [...templateResponses] : null;
     const mediaQueue = mediaResponses ? [...mediaResponses] : null;
+    const slidesQueue = slidesResponses ? [...slidesResponses] : null;
 
     mockGetPath.mockImplementation((path) => {
       if (path === screenPath) {
@@ -172,6 +174,10 @@ describe("PullStrategy recovers from a degraded pull", () => {
       }
 
       if (path === slidesPath) {
+        if (slidesQueue && slidesQueue.length > 0) {
+          return Promise.resolve(slidesQueue.shift());
+        }
+
         return Promise.resolve(collection(path, [{ slide }]));
       }
 
@@ -280,6 +286,149 @@ describe("PullStrategy recovers from a degraded pull", () => {
 
     expect(secondSlide.templateData).toEqual({ resources: {} });
     expect(secondSlide.invalid).toBeUndefined();
+  });
+
+  it("keeps the previously loaded slides when a playlist's slides request fails", async () => {
+    // getRegions hands back playlists straight off the API, which have never
+    // carried slidesData, so cloneDeep has nothing to preserve here. Without a
+    // lookup the playlist empties for a whole pull even though the region
+    // itself loaded fine.
+    mockLoadConfig.mockResolvedValue({ relationsChecksumEnabled: false });
+
+    wireApi({
+      slidesResponses: [
+        collection(slidesPath, [{ slide: buildSlide() }]),
+        // getAllResultsFromPath answers a bare {} when a page failed.
+        {},
+      ],
+    });
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
+
+    await strategy.getScreen(screenPath);
+    await strategy.getScreen(screenPath);
+
+    const { slidesData } = strategy.lastestScreenData.regionData[REGION][0];
+
+    expect(slidesData).toHaveLength(1);
+    expect(slidesData[0]["@id"]).toBe(`/v2/slides/${SLIDE}`);
+  });
+
+  it("does not hand a new playlist the slides of the one it replaced", async () => {
+    // The reason the lookup matches on @id: a playlist that merely sits at the
+    // same position is a different playlist, and showing its predecessor's
+    // slides is worse than showing none.
+    mockLoadConfig.mockResolvedValue({ relationsChecksumEnabled: false });
+
+    const replacementSlides = "/v2/playlists/replacement/slides";
+
+    wireApi({
+      regionResponses: [
+        collection(regionPath, [
+          {
+            playlist: {
+              "@id": `/v2/playlists/${PLAYLIST}`,
+              slides: slidesPath,
+            },
+          },
+        ]),
+        collection(regionPath, [
+          {
+            playlist: {
+              "@id": "/v2/playlists/replacement",
+              slides: replacementSlides,
+            },
+          },
+        ]),
+      ],
+    });
+
+    const previousGetAll = mockGetAllResultsFromPath.getMockImplementation();
+
+    mockGetAllResultsFromPath.mockImplementation((path) => {
+      if (path === replacementSlides) {
+        return Promise.resolve({});
+      }
+
+      return previousGetAll(path);
+    });
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
+
+    await strategy.getScreen(screenPath);
+    await strategy.getScreen(screenPath);
+
+    const playlist = strategy.lastestScreenData.regionData[REGION][0];
+
+    expect(playlist["@id"]).toBe("/v2/playlists/replacement");
+    expect(playlist.slidesData).toBeUndefined();
+  });
+
+  it("does not reuse another slide's template when the slides reorder", async () => {
+    // The template fallback reads previousSlide.templateData, so pairing slides
+    // by position would render a slide with its neighbour's template after an
+    // editor reorders the playlist.
+    mockLoadConfig.mockResolvedValue({ relationsChecksumEnabled: false });
+
+    const otherTemplatePath = "/v2/templates/01JRZ3NDEKTSV4RRFFQ69G5FAV";
+
+    const first = {
+      "@id": "/v2/slides/first",
+      templateInfo: { "@id": templatePath },
+      media: [],
+    };
+
+    const second = {
+      "@id": "/v2/slides/second",
+      templateInfo: { "@id": otherTemplatePath },
+      media: [],
+    };
+
+    wireApi({
+      slidesResponses: [
+        collection(slidesPath, [{ slide: first }, { slide: second }]),
+        // Reordered by an editor between the two pulls.
+        collection(slidesPath, [{ slide: second }, { slide: first }]),
+      ],
+    });
+
+    const templates = {
+      [templatePath]: { id: "template-one" },
+      [otherTemplatePath]: { id: "template-two" },
+    };
+
+    let pull = 0;
+    const previousGetPath = mockGetPath.getMockImplementation();
+
+    mockGetPath.mockImplementation((path) => {
+      if (path === screenPath) {
+        pull += 1;
+      }
+
+      // The first slide's template is unreachable on the second pull only.
+      if (path === templatePath && pull === 2) {
+        return Promise.resolve(null);
+      }
+
+      if (Object.prototype.hasOwnProperty.call(templates, path)) {
+        return Promise.resolve(templates[path]);
+      }
+
+      return previousGetPath(path);
+    });
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
+
+    await strategy.getScreen(screenPath);
+    await strategy.getScreen(screenPath);
+
+    const { slidesData } = strategy.lastestScreenData.regionData[REGION][0];
+    const reloaded = slidesData.find(
+      (entry) => entry["@id"] === "/v2/slides/first",
+    );
+
+    expect(reloaded.templateData).toEqual({ id: "template-one" });
+    expect(reloaded.invalid).toBeUndefined();
   });
 
   it("keeps the last known good template when a later request for it fails", async () => {

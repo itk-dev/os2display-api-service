@@ -49,6 +49,11 @@ All notable changes to this project will be documented in this file.
 - Fixed the screen client suppressing the fallback image while showing nothing, where slides the
   regions had dropped were still counted as content, so a screen with no renderable slides went
   black instead (#507).
+- Fixed a failed slides request emptying a playlist whose region had loaded fine, which lost that
+  playlist's content for a whole pull (#507). The slides the previous pull loaded are kept instead.
+- Fixed the screen client pairing slides and playlists with the previous pull by position rather
+  than by id, so reordering a playlist in the admin could pair a slide with another slide's
+  template or media.
 
 ## [3.0.0-rc8] - 2026-08-24
 

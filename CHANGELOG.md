@@ -42,6 +42,13 @@ All notable changes to this project will be documented in this file.
   playback restarted from the first slide on the next successful pull (#507). The last known good
   layout is kept instead, unless it belongs to a campaign or to a layout the screen has since been
   moved away from.
+- Fixed a failed template request dropping slides that were playing perfectly well, where a few
+  seconds of rate limiting emptied a region as soon as its playlist wrapped (#507). The last known
+  good template is kept instead, and a template that cannot be reached is now requested once per
+  pull rather than once per slide.
+- Fixed the screen client suppressing the fallback image while showing nothing, where slides the
+  regions had dropped were still counted as content, so a screen with no renderable slides went
+  black instead (#507).
 
 ## [3.0.0-rc8] - 2026-08-24
 

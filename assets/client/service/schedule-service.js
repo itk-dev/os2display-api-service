@@ -5,6 +5,7 @@ import isPublished from "../util/isPublished";
 import logger from "../logger/logger";
 import ClientConfigLoader from "../util/client-config-loader.js";
 import ScheduleUtils from "../util/schedule";
+import isRenderableSlide from "../util/is-renderable-slide";
 import { cloneDeep } from "lodash";
 
 /**
@@ -30,11 +31,15 @@ class ScheduleService {
   checkForEmptyContent() {
     logger.info("Checking for empty content.");
 
-    // Check for empty content.
+    // Check for empty content. Counted with the test Region applies when it
+    // renders, not just "has slides": a region whose slides all failed their
+    // template fetch holds slides that will never be shown, and counting those
+    // as content suppressed the fallback image and left the screen black.
     const values = Object.values(this.regions);
 
     const contentEmpty =
-      values.filter((value) => value?.slides.length > 0).length === 0;
+      values.filter((value) => value?.slides?.some(isRenderableSlide))
+        .length === 0;
 
     if (contentEmpty !== this.contentEmpty) {
       this.contentEmpty = contentEmpty;
@@ -83,6 +88,13 @@ class ScheduleService {
 
     // Remove cached version of region data.
     delete this.regions[regionId];
+
+    // Losing a region changes whether anything is left to show. Without this,
+    // unmounting the last region that had content leaves contentEmpty stuck at
+    // false, so the fallback image never comes back and the screen is black -
+    // which is exactly what a failed layout request does (it renders no
+    // regions at all).
+    this.checkForEmptyContent();
   }
 
   /**

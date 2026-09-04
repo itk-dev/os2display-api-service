@@ -67,6 +67,28 @@ function recordSends(regionId) {
   };
 }
 
+/**
+ * Record the contentEmpty/contentNotEmpty events, in order.
+ *
+ * @returns {object} The recorded events and a teardown.
+ */
+function recordEmptyState() {
+  const events = [];
+  const onEmpty = () => events.push("contentEmpty");
+  const onNotEmpty = () => events.push("contentNotEmpty");
+
+  document.addEventListener("contentEmpty", onEmpty);
+  document.addEventListener("contentNotEmpty", onNotEmpty);
+
+  return {
+    events,
+    stop: () => {
+      document.removeEventListener("contentEmpty", onEmpty);
+      document.removeEventListener("contentNotEmpty", onNotEmpty);
+    },
+  };
+}
+
 describe("ScheduleService", () => {
   let service;
   let recorder;
@@ -172,6 +194,40 @@ describe("ScheduleService", () => {
     // The replay has to hand out what checkScheduling last worked out, not the
     // set from before the schedule moved.
     expect(recorder.sends[2].map((slide) => slide.title)).toEqual(["a", "b"]);
+  });
+
+  it("reports empty content when every slide in the region is invalid", () => {
+    // Region drops invalid slides, so holding them is not the same as having
+    // something to show. Counting them kept contentEmpty at false, which
+    // suppressed the fallback image and left the screen black.
+    const state = recordEmptyState();
+
+    service.updateRegion(REGION_ID, buildRegion([buildSlide("a")]));
+    expect(state.events).toEqual(["contentNotEmpty"]);
+
+    service.updateRegion(
+      REGION_ID,
+      buildRegion([buildSlide("a", { invalid: true })]),
+    );
+
+    expect(state.events).toEqual(["contentNotEmpty", "contentEmpty"]);
+
+    state.stop();
+  });
+
+  it("reports empty content when the last region with content is removed", () => {
+    // A failed layout request renders no regions at all, so every region
+    // unmounts. Without re-checking here the fallback image never comes back.
+    const state = recordEmptyState();
+
+    service.updateRegion(REGION_ID, buildRegion([buildSlide("a")]));
+    expect(state.events).toEqual(["contentNotEmpty"]);
+
+    service.regionRemoved(REGION_ID);
+
+    expect(state.events).toEqual(["contentNotEmpty", "contentEmpty"]);
+
+    state.stop();
   });
 
   it("drops the cached region and its interval on regionRemoved", async () => {

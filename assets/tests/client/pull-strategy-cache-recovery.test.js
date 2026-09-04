@@ -282,6 +282,81 @@ describe("PullStrategy recovers from a degraded pull", () => {
     expect(secondSlide.invalid).toBeUndefined();
   });
 
+  it("keeps the last known good template when a later request for it fails", async () => {
+    // Nulling templateData marks the slide invalid, and Region drops invalid
+    // slides. A few seconds of rate limiting during the template phase would
+    // otherwise empty the region once the current playlist wraps - with the
+    // fallback image already suppressed, so the screen goes black.
+    mockLoadConfig.mockResolvedValue({ relationsChecksumEnabled: false });
+
+    const template = { resources: { good: true } };
+
+    wireApi({ templateResponses: [template, null] });
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
+
+    await strategy.getScreen(screenPath);
+    await strategy.getScreen(screenPath);
+
+    expect(callsFor(mockGetPath, templatePath)).toBe(2);
+
+    const slide =
+      strategy.lastestScreenData.regionData[REGION][0].slidesData[0];
+
+    expect(slide.templateData).toEqual(template);
+    expect(slide.invalid).toBeUndefined();
+  });
+
+  it("marks the slide invalid when no template has ever loaded", async () => {
+    // The counterpart to the test above: falling back is only possible when an
+    // earlier pull got the template. With nothing to fall back to the slide is
+    // genuinely unrenderable and has to be dropped.
+    wireApi({ templateResponses: [null] });
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
+
+    await strategy.getScreen(screenPath);
+
+    const slide =
+      strategy.lastestScreenData.regionData[REGION][0].slidesData[0];
+
+    expect(slide.templateData).toBeNull();
+    expect(slide.invalid).toBe(true);
+  });
+
+  it("requests a failing template once per pull, not once per slide", async () => {
+    // Slides share a handful of templates. Without caching the failure for the
+    // rest of the pull, every slide using an unreachable template pays the full
+    // retry budget again, which is what stretches a short outage across a whole
+    // pull.
+    wireApi({ templateResponses: [null] });
+
+    const previousGetAll = mockGetAllResultsFromPath.getMockImplementation();
+
+    mockGetAllResultsFromPath.mockImplementation((path) => {
+      if (path === slidesPath) {
+        return Promise.resolve(
+          collection(path, [
+            { slide: { ...buildSlide(), "@id": "/v2/slides/a" } },
+            { slide: { ...buildSlide(), "@id": "/v2/slides/b" } },
+          ]),
+        );
+      }
+
+      return previousGetAll(path);
+    });
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
+
+    await strategy.getScreen(screenPath);
+
+    expect(callsFor(mockGetPath, templatePath)).toBe(1);
+
+    const { slidesData } = strategy.lastestScreenData.regionData[REGION][0];
+
+    expect(slidesData.map((entry) => entry.invalid)).toEqual([true, true]);
+  });
+
   it("refetches media that failed, rather than reusing the cached null", async () => {
     wireApi({ slide: buildSlide([mediaPath]), mediaResponses: [null] });
 

@@ -3,6 +3,7 @@ import { createGridArea } from "../../shared/grid-generator/grid-generator";
 import { TransitionGroup, CSSTransition } from "react-transition-group";
 import ErrorBoundary from "./error-boundary.jsx";
 import idFromPath from "../util/id-from-path";
+import isRenderableSlide from "../util/is-renderable-slide";
 import logger from "../logger/logger";
 import Slide from "./slide.jsx";
 import "./region.scss";
@@ -104,8 +105,9 @@ function Region({ region }) {
   function regionContentListener(event) {
     const receivedSlides = [...event.detail.slides];
 
-    // Filter out invalid slides.
-    setNewSlides(receivedSlides.filter((slide) => !slide.invalid));
+    // Filter out invalid slides. Shared with ScheduleService.checkForEmptyContent
+    // so the two cannot disagree about what counts as content.
+    setNewSlides(receivedSlides.filter(isRenderableSlide));
   }
 
   // Setup event listener for region content.

@@ -520,22 +520,35 @@ class PullStrategy {
             const templatePath = slide.templateInfo["@id"];
 
             // Load template into slide.templateData.
+            let templateData;
+
             if (
               Object.prototype.hasOwnProperty.call(
                 fetchedTemplates,
                 templatePath,
               )
             ) {
-              slide.templateData = fetchedTemplates[templatePath];
+              templateData = fetchedTemplates[templatePath];
             } else {
               logger.info(`Fetching template data.`);
-              const templateData = await this.apiHelper.getPath(templatePath);
-              slide.templateData = templateData;
+              templateData = await this.apiHelper.getPath(templatePath);
 
-              if (templateData !== null) {
-                fetchedTemplates[templatePath] = templateData;
-              }
+              // Failures are cached for the rest of this pull too. Slides share
+              // a handful of templates, so without this every slide using a
+              // template that is currently unreachable pays the whole retry
+              // budget again - which is what stretches a few seconds of rate
+              // limiting across an entire pull.
+              fetchedTemplates[templatePath] = templateData;
             }
+
+            // Keep the last known good template rather than dropping the slide,
+            // the same trade getRegions and the layout branch make. Region
+            // filters invalid slides out, so nulling this is what turns a brief
+            // outage into a region that empties itself once the current
+            // playlist wraps - and it empties with the fallback image already
+            // suppressed, so the screen goes black.
+            slide.templateData =
+              templateData ?? previousSlide.templateData ?? null;
           } else {
             logger.info(`Template data loaded from cache.`);
             slide.templateData = previousSlide.templateData;

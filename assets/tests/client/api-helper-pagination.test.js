@@ -123,4 +123,27 @@ describe("ApiHelper.getAllResultsFromPath", () => {
 
     await expect(apiHelper.getAllResultsFromPath(PATH)).resolves.toEqual({});
   });
+
+  it("gives up the collection when the page backstop is reached", async () => {
+    const apiHelper = new ApiHelper("https://example.test");
+    let calls = 0;
+
+    // A collection that never stops offering a next page, and never returns an
+    // empty one - so neither of the two normal termination conditions fires and
+    // only the backstop is left.
+    vi.spyOn(apiHelper, "getPath").mockImplementation((path) => {
+      calls += 1;
+      const current = Number(path.match(/page=(\d+)/)?.[1] ?? 1);
+
+      return Promise.resolve(page(ITEMS_PER_PAGE, 1e6, current, current + 1));
+    });
+
+    const result = await apiHelper.getAllResultsFromPath(PATH);
+
+    // Bounded, and given up rather than returned as a prefix: a truncated
+    // collection in the shape of a complete one reads as a healthy pull to every
+    // caller, which then caches it behind the server's checksum (#507).
+    expect(calls).toBe(100);
+    expect(result).toEqual({});
+  });
 });

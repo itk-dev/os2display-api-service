@@ -217,9 +217,16 @@ class ApiHelper {
    * count against `hydra:totalItems` means a count that disagrees with the rows
    * actually returned can no longer produce an endless run of requests.
    *
+   * Answers `{path, results, keys}` only for a collection it paged to the end.
+   * Anything short of that - a failed page, a throw, or the `MAX_PAGES` backstop
+   * - answers a bare `{}`. Callers test for the `results`/`path` key to tell the
+   * two apart, so a partial collection must never be handed back in the shape of
+   * a complete one.
+   *
    * @param {string} path Path to the resources.
    * @param {object} keys Keys that should be passed along with the result.
-   * @returns {Promise<*>} Promise with all resources from a path.
+   * @returns {Promise<object>} All resources from the path, or `{}` if the whole
+   *   collection could not be read.
    */
   async getAllResultsFromPath(path, keys = {}) {
     const results = [];
@@ -250,10 +257,18 @@ class ApiHelper {
             : (responseData["hydra:view"]?.["hydra:next"] ?? null);
       }
 
+      // Hitting the backstop means the collection is still offering more pages,
+      // so what we hold is a prefix of it. Give it up the same way a failed page
+      // is given up: a short collection returned in the shape of a complete one
+      // is treated as a healthy pull by every caller, and the pull then stores
+      // the server's checksum for it and serves the truncated data from cache
+      // until an editor happens to change the content (#507).
       if (nextPath !== null) {
         logger.error(
-          `Stopped paginating ${path} after ${MAX_PAGES} pages; results may be incomplete.`,
+          `Stopped paginating ${path} after ${MAX_PAGES} pages; giving up the collection rather than returning a prefix of it.`,
         );
+
+        return {};
       }
     } catch (err) {
       // Never let a data-sync failure surface on a screen; log and move on.

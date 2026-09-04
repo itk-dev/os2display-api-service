@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed the screen client treating a collection cut short by the 100-page backstop as a complete one,
+  which cached the truncated data behind the server's checksum until an editor changed the content
+  (#507). The collection is now given up, the same as when a page request fails.
 - Fixed a region locking up when a slide signalled `slideDone()` in the same millisecond it started;
   the run id is now a counter rather than a timestamp.
 - Added a minimum dwell before a region acts on `slideDone()`, so a template that finishes while

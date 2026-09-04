@@ -81,6 +81,8 @@ services:
       NGINX_PORT: 8080
       NGINX_MAX_BODY_SIZE: 5M
       NGINX_SET_REAL_IP_FROM: 172.16.0.0/12
+      NGINX_RATE_LIMIT: 100r/s
+      NGINX_RATE_LIMIT_BURST: 500
     healthcheck:
       # $$NGINX_PORT escapes compose-time interpolation; the variable is
       # expanded by the shell inside the container against the service's

@@ -48,7 +48,7 @@ const capitalize = (s) => {
  * @param {object} props Props.
  * @param {object} props.slide The slide.
  * @param {object} props.content The slide content.
- * @param {number} props.run Timestamp of when to start run.
+ * @param {number} props.run Run id. Changes each time the slide should run.
  * @param {Function} props.slideDone Function to invoke when the slide is done playing.
  * @param {string} props.executionId Unique id for the instance.
  * @returns {JSX.Element} The component.

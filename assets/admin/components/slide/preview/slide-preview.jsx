@@ -3,6 +3,7 @@ import { Button } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
 import ErrorBoundary from "../../error-boundary";
 import { renderSlide } from "../../../../shared/slide-utils/templates";
+import nextRunId from "../../../../shared/slide-utils/next-run-id";
 import "./slide-preview.scss";
 
 /**
@@ -10,6 +11,7 @@ import "./slide-preview.scss";
  *
  * @param {object} props Props.
  * @param {object} props.slide The slide.
+ * @param {object} props.templateData The template to render the slide with.
  * @param {object} props.mediaData Object of loaded media.
  * @param {object} props.themeData Object of theme data.
  * @param {string} props.orientation Display orientation or horizontal.
@@ -32,7 +34,7 @@ function SlidePreview({
 }) {
   const { t } = useTranslation("common");
   const [remoteComponentSlide, setRemoteComponentSlide] = useState(null);
-  const [runId, setRunId] = useState("");
+  const [runId, setRunId] = useState(null);
   const [fontSizeRem, setFontSizeRem] = useState(1);
 
   /** Create remoteComponentSlide from slide and mediaData */
@@ -81,7 +83,7 @@ function SlidePreview({
 
   useEffect(() => {
     if (showPreview) {
-      setRunId(new Date().toISOString());
+      setRunId(nextRunId);
     }
   }, [showPreview]);
 

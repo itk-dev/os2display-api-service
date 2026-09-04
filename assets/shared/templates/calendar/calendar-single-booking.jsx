@@ -42,7 +42,7 @@ import {
  * @param {object} props.templateRootStyle - The template root style.
  * @param {Function} props.getTitle - Function to get title for event.
  * @param {object} props.slide - The slide.
- * @param {string} props.run Whether or not the slide should start running.
+ * @param {number} props.run Run id. Changes each time the slide should run.
  * @returns {React.JSX.Element} - The component.
  */
 function CalendarSingleBooking({

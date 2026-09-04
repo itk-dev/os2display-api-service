@@ -4,7 +4,8 @@ import { TransitionGroup, CSSTransition } from "react-transition-group";
 import ErrorBoundary from "./error-boundary.jsx";
 import idFromPath from "../util/id-from-path";
 import logger from "../logger/logger";
-import Slide from "./slide.jsx";
+import Slide, { MIN_SLIDE_DWELL_MS } from "./slide.jsx";
+import nextRunId from "../../shared/slide-utils/next-run-id.js";
 import "./region.scss";
 
 /**
@@ -67,7 +68,7 @@ function Region({ region }) {
       setCurrentSlide(nextSlideAndIndex.nextSlide);
     }
 
-    setRunId(new Date().toISOString());
+    setRunId(nextRunId);
 
     logger.info(`Slide done with executionId: ${slide?.executionId}`);
 
@@ -160,7 +161,7 @@ function Region({ region }) {
     if (!currentSlide) {
       if (slides.length > 0) {
         setCurrentSlide(slides[0]);
-        setRunId(new Date().toISOString());
+        setRunId(nextRunId);
       }
     }
 
@@ -178,11 +179,15 @@ function Region({ region }) {
     <div className="region" style={rootStyle} id={regionId}>
       <ErrorBoundary>
         <>
+          {/* The cross-fade below and the dwell floor are deliberately the same
+          length: a slide cannot advance the region before the floor, so a
+          transition of that length always completes. region.scss holds the
+          matching opacity transition. */}
           <TransitionGroup component={null}>
             {currentSlide && (
               <CSSTransition
                 key={currentSlide.executionId}
-                timeout={1000}
+                timeout={MIN_SLIDE_DWELL_MS}
                 classNames="slide"
                 nodeRef={nodeRefs[currentSlide.executionId]}
               >

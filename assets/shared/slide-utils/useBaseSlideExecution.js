@@ -12,7 +12,7 @@ import clampDuration from "./duration.js";
  *
  * @param {object} options
  * @param {object} options.slide The slide object.
- * @param {string|null} options.run Run token: falsy means "do not run", and a
+ * @param {number|null} options.run Run token: falsy means "do not run", and a
  *   new truthy value restarts the slide without a remount.
  * @param {Function} options.slideDone Callback when slide finishes.
  * @param {number} options.duration Duration in ms. Invalid or missing falls

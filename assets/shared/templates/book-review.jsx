@@ -33,7 +33,7 @@ function renderSlide(slide, run, slideDone) {
  * @param {object} props Props.
  * @param {object} props.slide The slide.
  * @param {object} props.content The slide content.
- * @param {boolean} props.run Whether or not the slide should start running.
+ * @param {number} props.run Run id. Changes each time the slide should run.
  * @param {Function} props.slideDone Function to invoke when the slide is done playing.
  * @param {string} props.executionId Unique id for the instance.
  * @returns {JSX.Element} The component.

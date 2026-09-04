@@ -64,7 +64,7 @@ function getConfig(templateUlid) {
  * Render slide.
  *
  * @param {object} slide The slide object.
- * @param {string} run The run id.
+ * @param {number} run Run id. Changes each time the slide should run.
  * @param {Function} slideDone The function to invoke when the slide is done.
  * @return {JSXElement|string}
  */

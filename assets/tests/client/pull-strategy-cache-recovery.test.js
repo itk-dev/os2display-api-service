@@ -27,6 +27,7 @@ const SCREEN = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const REGION = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
 const PLAYLIST = "01CRZ3NDEKTSV4RRFFQ69G5FAV";
 const SLIDE = "01DRZ3NDEKTSV4RRFFQ69G5FAV";
+const TEMPLATE = "01FRZ3NDEKTSV4RRFFQ69G5FAV";
 
 const screenPath = `/v2/screens/${SCREEN}`;
 const layoutPath = `/v2/layouts/01ERZ3NDEKTSV4RRFFQ69G5FAV`;
@@ -34,7 +35,7 @@ const groupsPath = `${screenPath}/screen-groups`;
 const campaignsPath = `${screenPath}/campaigns`;
 const regionPath = `${screenPath}/regions/${REGION}/playlists`;
 const slidesPath = `/v2/playlists/${PLAYLIST}/slides`;
-const templatePath = `/v2/templates/01FRZ3NDEKTSV4RRFFQ69G5FAV`;
+const templatePath = `/v2/templates/${TEMPLATE}`;
 const mediaPath = `/v2/media/01GRZ3NDEKTSV4RRFFQ69G5FAV`;
 
 /**
@@ -114,12 +115,10 @@ describe("PullStrategy recovers from a degraded pull", () => {
     screen = buildScreen(checksums),
     slide = buildSlide(),
     regionResponses = null,
-    templateResponses = null,
     mediaResponses = null,
     slidesResponses = null,
   } = {}) {
     const regionQueue = regionResponses ? [...regionResponses] : null;
-    const templateQueue = templateResponses ? [...templateResponses] : null;
     const mediaQueue = mediaResponses ? [...mediaResponses] : null;
     const slidesQueue = slidesResponses ? [...slidesResponses] : null;
 
@@ -130,14 +129,6 @@ describe("PullStrategy recovers from a degraded pull", () => {
 
       if (path === layoutPath) {
         return Promise.resolve({ grid: { rows: 1, columns: 1 }, regions: [] });
-      }
-
-      if (path === templatePath) {
-        return Promise.resolve(
-          templateQueue && templateQueue.length > 0
-            ? templateQueue.shift()
-            : { resources: {} },
-        );
       }
 
       if (path === mediaPath) {
@@ -262,30 +253,46 @@ describe("PullStrategy recovers from a degraded pull", () => {
     expect(callsFor(mockGetAllResultsFromPath, regionPath)).toBe(2);
   });
 
-  it("refetches a template that failed, rather than reusing the cached null", async () => {
-    // Regions are cached on the second pull here, so slide and previousSlide
-    // are clones of the same cached object and their checksums always agree.
-    // Recovery therefore has to key off the missing templateData.
-    wireApi({ templateResponses: [null] });
+  it("reads the template off the slide instead of requesting it", async () => {
+    // Templates are bundled into the client build, and the only thing rendering
+    // wants from templateData is the id it looks the bundled module up by. That
+    // id is already in the slide's template IRI, so the request the pull used to
+    // make bought nothing and cost a region whenever it was throttled.
+    wireApi();
+
+    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
+
+    await strategy.getScreen(screenPath);
+    await strategy.getScreen(screenPath);
+
+    expect(callsFor(mockGetPath, templatePath)).toBe(0);
+
+    const slide =
+      strategy.lastestScreenData.regionData[REGION][0].slidesData[0];
+
+    expect(slide.templateData).toEqual({ id: TEMPLATE });
+    expect(slide.invalid).toBeUndefined();
+  });
+
+  it("marks the slide invalid when its template IRI carries no id", async () => {
+    // Region drops invalid slides. Nothing can be rendered without an id to
+    // resolve the template module by, so this is the one case left where a
+    // slide has to be held back.
+    const slide = buildSlide();
+    slide.templateInfo = { "@id": "/v2/templates/" };
+
+    wireApi({ slide });
 
     const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
 
     await strategy.getScreen(screenPath);
 
-    const firstSlide =
+    const pulled =
       strategy.lastestScreenData.regionData[REGION][0].slidesData[0];
 
-    expect(firstSlide.invalid).toBe(true);
-
-    await strategy.getScreen(screenPath);
-
-    expect(callsFor(mockGetPath, templatePath)).toBe(2);
-
-    const secondSlide =
-      strategy.lastestScreenData.regionData[REGION][0].slidesData[0];
-
-    expect(secondSlide.templateData).toEqual({ resources: {} });
-    expect(secondSlide.invalid).toBeUndefined();
+    expect(pulled.templateData).toBeNull();
+    expect(pulled.invalid).toBe(true);
+    expect(mockLogger.warn).toHaveBeenCalled();
   });
 
   it("keeps the previously loaded slides when a playlist's slides request fails", async () => {
@@ -364,146 +371,26 @@ describe("PullStrategy recovers from a degraded pull", () => {
     expect(playlist.slidesData).toBeUndefined();
   });
 
-  it("does not reuse another slide's template when the slides reorder", async () => {
-    // The template fallback reads previousSlide.templateData, so pairing slides
-    // by position would render a slide with its neighbour's template after an
-    // editor reorders the playlist.
-    mockLoadConfig.mockResolvedValue({ relationsChecksumEnabled: false });
-
-    const otherTemplatePath = "/v2/templates/01JRZ3NDEKTSV4RRFFQ69G5FAV";
-
-    const first = {
-      "@id": "/v2/slides/first",
-      templateInfo: { "@id": templatePath },
-      media: [],
-    };
-
-    const second = {
-      "@id": "/v2/slides/second",
-      templateInfo: { "@id": otherTemplatePath },
-      media: [],
-    };
-
-    wireApi({
-      slidesResponses: [
-        collection(slidesPath, [{ slide: first }, { slide: second }]),
-        // Reordered by an editor between the two pulls.
-        collection(slidesPath, [{ slide: second }, { slide: first }]),
-      ],
-    });
-
-    const templates = {
-      [templatePath]: { id: "template-one" },
-      [otherTemplatePath]: { id: "template-two" },
-    };
-
-    let pull = 0;
-    const previousGetPath = mockGetPath.getMockImplementation();
-
-    mockGetPath.mockImplementation((path) => {
-      if (path === screenPath) {
-        pull += 1;
-      }
-
-      // The first slide's template is unreachable on the second pull only.
-      if (path === templatePath && pull === 2) {
-        return Promise.resolve(null);
-      }
-
-      if (Object.prototype.hasOwnProperty.call(templates, path)) {
-        return Promise.resolve(templates[path]);
-      }
-
-      return previousGetPath(path);
-    });
+  it("clears an invalid flag carried over from an earlier pull", async () => {
+    // Region drops invalid slides, so a flag that outlives the reason for it
+    // keeps the slide off screen forever. The pull now reads the template off
+    // every slide it sees, including the ones it takes from the cache.
+    wireApi();
 
     const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
 
     await strategy.getScreen(screenPath);
-    await strategy.getScreen(screenPath);
 
-    const { slidesData } = strategy.lastestScreenData.regionData[REGION][0];
-    const reloaded = slidesData.find(
-      (entry) => entry["@id"] === "/v2/slides/first",
-    );
-
-    expect(reloaded.templateData).toEqual({ id: "template-one" });
-    expect(reloaded.invalid).toBeUndefined();
-  });
-
-  it("keeps the last known good template when a later request for it fails", async () => {
-    // Nulling templateData marks the slide invalid, and Region drops invalid
-    // slides. A few seconds of rate limiting during the template phase would
-    // otherwise empty the region once the current playlist wraps - with the
-    // fallback image already suppressed, so the screen goes black.
-    mockLoadConfig.mockResolvedValue({ relationsChecksumEnabled: false });
-
-    const template = { resources: { good: true } };
-
-    wireApi({ templateResponses: [template, null] });
-
-    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
+    strategy.lastestScreenData.regionData[REGION][0].slidesData[0].invalid =
+      true;
 
     await strategy.getScreen(screenPath);
-    await strategy.getScreen(screenPath);
-
-    expect(callsFor(mockGetPath, templatePath)).toBe(2);
 
     const slide =
       strategy.lastestScreenData.regionData[REGION][0].slidesData[0];
 
-    expect(slide.templateData).toEqual(template);
+    expect(slide.templateData).toEqual({ id: TEMPLATE });
     expect(slide.invalid).toBeUndefined();
-  });
-
-  it("marks the slide invalid when no template has ever loaded", async () => {
-    // The counterpart to the test above: falling back is only possible when an
-    // earlier pull got the template. With nothing to fall back to the slide is
-    // genuinely unrenderable and has to be dropped.
-    wireApi({ templateResponses: [null] });
-
-    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
-
-    await strategy.getScreen(screenPath);
-
-    const slide =
-      strategy.lastestScreenData.regionData[REGION][0].slidesData[0];
-
-    expect(slide.templateData).toBeNull();
-    expect(slide.invalid).toBe(true);
-  });
-
-  it("requests a failing template once per pull, not once per slide", async () => {
-    // Slides share a handful of templates. Without caching the failure for the
-    // rest of the pull, every slide using an unreachable template pays the full
-    // retry budget again, which is what stretches a short outage across a whole
-    // pull.
-    wireApi({ templateResponses: [null] });
-
-    const previousGetAll = mockGetAllResultsFromPath.getMockImplementation();
-
-    mockGetAllResultsFromPath.mockImplementation((path) => {
-      if (path === slidesPath) {
-        return Promise.resolve(
-          collection(path, [
-            { slide: { ...buildSlide(), "@id": "/v2/slides/a" } },
-            { slide: { ...buildSlide(), "@id": "/v2/slides/b" } },
-          ]),
-        );
-      }
-
-      return previousGetAll(path);
-    });
-
-    const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
-
-    await strategy.getScreen(screenPath);
-
-    expect(callsFor(mockGetPath, templatePath)).toBe(1);
-
-    const { slidesData } = strategy.lastestScreenData.regionData[REGION][0];
-
-    expect(slidesData.map((entry) => entry.invalid)).toEqual([true, true]);
   });
 
   it("refetches media that failed, rather than reusing the cached null", async () => {
@@ -658,7 +545,7 @@ describe("PullStrategy recovers from a degraded pull", () => {
     expect(strategy.lastestScreenData.layoutData).toBeNull();
   });
 
-  it("keeps the template cached when nothing failed", async () => {
+  it("keeps media cached when nothing failed", async () => {
     wireApi({ slide: buildSlide([mediaPath]) });
 
     const strategy = new PullStrategy({ endpoint: "", entryPoint: screenPath });
@@ -666,7 +553,6 @@ describe("PullStrategy recovers from a degraded pull", () => {
     await strategy.getScreen(screenPath);
     await strategy.getScreen(screenPath);
 
-    expect(callsFor(mockGetPath, templatePath)).toBe(1);
     expect(callsFor(mockGetPath, mediaPath)).toBe(1);
   });
 });

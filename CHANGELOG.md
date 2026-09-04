@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Removed the screen client's template requests. Templates are bundled into the client, and the only
+  thing it took from `/v2/templates/{id}` was the id already carried by the slide, so the request
+  cost one round trip per template per pull and emptied a region whenever it was throttled (#507).
 - Fixed a slide whose template the client cannot resolve taking down its whole region: the error was
   thrown before the slide's own error boundary mounted, so the region's boundary caught it instead
   and, having no way to reset, showed the error fallback until the client was reloaded.

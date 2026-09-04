@@ -7,6 +7,7 @@ import logger from "../logger/logger";
 import DataSync from "../data-sync/data-sync";
 import ScheduleService from "./schedule-service";
 import ClientConfigLoader from "../util/client-config-loader.js";
+import templateDataFromSlide from "../util/template-data-from-slide.js";
 
 /**
  * ContentService.
@@ -257,7 +258,7 @@ class ContentService {
 
   static async attachReferencesToSlide(strategy, slide) {
     /* eslint-disable no-param-reassign */
-    slide.templateData = await strategy.getTemplateData(slide);
+    slide.templateData = templateDataFromSlide(slide);
     slide.feedData = await strategy.getFeedData(slide);
 
     slide.mediaData = {};

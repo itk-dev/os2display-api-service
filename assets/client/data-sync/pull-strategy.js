@@ -4,12 +4,13 @@ import ApiHelper from "./api-helper";
 import { cloneDeep } from "lodash";
 import ClientConfigLoader from "../util/client-config-loader.js";
 import { settleWithConcurrency } from "../util/concurrency.js";
+import templateDataFromSlide from "../util/template-data-from-slide.js";
 
 // Maximum requests in flight during a pull. A multi-region layout fans out one
-// request per region, playlist, slide, template, media item and feed; sending
-// all of them at once is what empties the reverse proxy's rate-limit bucket and
-// leaves regions blank (#507). Keeping the burst well under the configured
-// burst size means the retry layer rarely has to do anything.
+// request per region, playlist, slide, media item and feed; sending all of them
+// at once is what empties the reverse proxy's rate-limit bucket and leaves
+// regions blank (#507). Keeping the burst well under the configured burst size
+// means the retry layer rarely has to do anything.
 const MAX_CONCURRENT_REQUESTS = 6;
 
 /**
@@ -508,7 +509,6 @@ class PullStrategy {
     }
 
     // Cached data.
-    const fetchedTemplates = {};
     const fetchedMedia = {};
 
     // Iterate all slides and load required relations.
@@ -533,11 +533,10 @@ class PullStrategy {
           const slide = cloneDeep(dataEntrySlidesData[slideKey]);
 
           // Find the slide in previous data for comparing relationsChecksum
-          // values, and for the template fallback below. Matched on @id, not on
+          // values, and for the media cache below. Matched on @id, not on
           // position: an editor reordering a playlist would otherwise pair a
-          // slide with a different slide's relations, and the fallback would
-          // hand it that slide's template. Rendering the wrong template is
-          // worse than rendering none.
+          // slide with a different slide's relations, and the cached branch
+          // would hand it that slide's media.
           const previousSlideSource = previousPlaylist?.slidesData?.find(
             (candidate) => candidate["@id"] === slide["@id"],
           );
@@ -551,72 +550,33 @@ class PullStrategy {
           const newSlideChecksums = slide.relationsChecksum ?? null;
           const oldSlideChecksums = previousSlide?.relationsChecksum ?? null;
 
-          // Fetch template if it has changed, or if the last attempt to load it
-          // failed. Without the second condition a failed fetch is cached as
-          // null behind an unchanged checksum, and every later pull reuses the
-          // null - the slide stays invalid until an editor touches it (#507).
-          // The checksum cannot carry that signal: when the regions branch is
-          // served from cache, slide and previousSlide are clones of the same
-          // cached object, so their checksums always agree.
-          if (
-            relationChecksumEnabled === false ||
-            newSlideChecksums === null ||
-            oldSlideChecksums === null ||
-            previousSlide.templateData === null ||
-            newSlideChecksums.templateInfo !== oldSlideChecksums.templateInfo
-          ) {
-            const templatePath = slide.templateInfo["@id"];
-
-            // Load template into slide.templateData.
-            let templateData;
-
-            if (
-              Object.prototype.hasOwnProperty.call(
-                fetchedTemplates,
-                templatePath,
-              )
-            ) {
-              templateData = fetchedTemplates[templatePath];
-            } else {
-              logger.info(`Fetching template data.`);
-              templateData = await this.apiHelper.getPath(templatePath);
-
-              // Failures are cached for the rest of this pull too. Slides share
-              // a handful of templates, so without this every slide using a
-              // template that is currently unreachable pays the whole retry
-              // budget again - which is what stretches a few seconds of rate
-              // limiting across an entire pull.
-              fetchedTemplates[templatePath] = templateData;
-            }
-
-            // Keep the last known good template rather than dropping the slide,
-            // the same trade getRegions and the layout branch make. Region
-            // filters invalid slides out, so nulling this is what turns a brief
-            // outage into a region that empties itself once the current
-            // playlist wraps - and it empties with the fallback image already
-            // suppressed, so the screen goes black.
-            slide.templateData =
-              templateData ?? previousSlide.templateData ?? null;
-          } else {
-            logger.info(`Template data loaded from cache.`);
-            slide.templateData = previousSlide.templateData;
-          }
+          // Read the template off the slide rather than requesting it. Nothing
+          // in the API's template resource is used for rendering - see
+          // templateDataFromSlide.
+          slide.templateData = templateDataFromSlide(slide);
 
           // A slide cannot work without templateData. Mark as invalid.
           if (slide.templateData === null) {
             logger.warn(
-              `Template (${slide.templateInfo["@id"]}) not loaded, slideId: ${slide["@id"]}`,
+              `Template (${slide.templateInfo?.["@id"]}) has no id, slideId: ${slide["@id"]}`,
             );
             slide.invalid = true;
           } else if (slide.invalid === true) {
-            // Carried over from a pull where the template failed. Region
-            // filters invalid slides out, so refetching the template achieves
-            // nothing unless the flag is cleared with it.
+            // Carried over from an earlier pull, either through the cached
+            // regions branch or from lastestScreenData. Region filters invalid
+            // slides out, so reading a usable template achieves nothing unless
+            // the flag is cleared with it.
             delete slide.invalid;
           }
 
           // Fetch media if it has changed, or if any item in the cached set
-          // failed to load last time - same reasoning as the template above.
+          // failed to load last time. Without the second condition a failed
+          // fetch is cached as null behind an unchanged checksum, and every
+          // later pull reuses the null - the item stays missing until an editor
+          // touches the slide (#507). The checksum cannot carry that signal:
+          // when the regions branch is served from cache, slide and
+          // previousSlide are clones of the same cached object, so their
+          // checksums always agree.
           if (
             relationChecksumEnabled === false ||
             newSlideChecksums === null ||
@@ -685,16 +645,6 @@ class PullStrategy {
 
   getAllResultsFromPath(path, keys = {}) {
     return this.apiHelper.getAllResultsFromPath(path, keys);
-  }
-
-  async getTemplateData(slide) {
-    return new Promise((resolve) => {
-      const templatePath = slide.templateInfo["@id"];
-
-      this.apiHelper.getPath(templatePath).then((data) => {
-        resolve(data);
-      });
-    });
   }
 
   async getFeedData(slide) {

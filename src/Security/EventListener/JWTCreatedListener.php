@@ -6,6 +6,7 @@ namespace App\Security\EventListener;
 
 use App\Entity\Interfaces\TenantScopedUserInterface;
 use App\Entity\ScreenUser;
+use App\Security\TenantPayloadBuilder;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTCreatedEvent;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -19,6 +20,7 @@ class JWTCreatedListener
 {
     public function __construct(
         private readonly RequestStack $requestStack,
+        private readonly TenantPayloadBuilder $tenantPayloadBuilder,
         private readonly int $screenTokenTtl = 86400,
     ) {}
 
@@ -35,7 +37,7 @@ class JWTCreatedListener
         }
 
         $payload['user'] = $user;
-        $payload['tenants'] = $user->getUserRoleTenants()->toArray();
+        $payload['tenants'] = $this->tenantPayloadBuilder->build($user);
 
         if ($user instanceof ScreenUser) {
             $now = time();

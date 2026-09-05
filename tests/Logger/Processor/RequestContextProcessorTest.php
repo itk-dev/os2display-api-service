@@ -83,7 +83,7 @@ class RequestContextProcessorTest extends TestCase
 
         $user = $this->createMock(ScreenUser::class);
         $user->method('getScreen')->willReturn($screen);
-        $user->method('getActiveTenant')->willReturn($tenant);
+        $user->method('getResolvedActiveTenant')->willReturn($tenant);
 
         $processor = new RequestContextProcessor(new RequestStack(), $this->security($user));
 
@@ -101,7 +101,7 @@ class RequestContextProcessorTest extends TestCase
 
         $user = $this->createMock(User::class);
         $user->method('getUserIdentifier')->willReturn('editor@example.com');
-        $user->method('getActiveTenant')->willReturn($tenant);
+        $user->method('getResolvedActiveTenant')->willReturn($tenant);
 
         $processor = new RequestContextProcessor(new RequestStack(), $this->security($user));
 
@@ -116,7 +116,7 @@ class RequestContextProcessorTest extends TestCase
     {
         $user = $this->createMock(User::class);
         $user->method('getUserIdentifier')->willReturn('editor@example.com');
-        $user->method('getActiveTenant')->willThrowException(new \InvalidArgumentException('no tenant'));
+        $user->method('getResolvedActiveTenant')->willThrowException(new \InvalidArgumentException('no tenant'));
 
         $processor = new RequestContextProcessor(new RequestStack(), $this->security($user));
 
@@ -124,6 +124,63 @@ class RequestContextProcessorTest extends TestCase
 
         $this->assertSame('editor@example.com', $record->extra['user.id']);
         $this->assertArrayNotHasKey('tenant.key', $record->extra);
+    }
+
+    /**
+     * The processor must never fall back to getActiveTenant(): that accessor
+     * resolves "the user's first tenant", which lazy-loads the tenant collection.
+     * A query issued from a log processor is logged in turn by the DBAL logging
+     * middleware, re-entering the processor while the collection is still marked
+     * uninitialised — and Doctrine appends each nested load, leaving the user
+     * holding one copy of every tenant per nesting level.
+     */
+    public function testUnresolvedTenantIsOmittedRatherThanResolved(): void
+    {
+        $user = $this->createMock(User::class);
+        $user->method('getUserIdentifier')->willReturn('editor@example.com');
+        $user->method('getResolvedActiveTenant')->willReturn(null);
+        $user->expects($this->never())->method('getActiveTenant');
+
+        $processor = new RequestContextProcessor(new RequestStack(), $this->security($user));
+
+        $record = $processor($this->record());
+
+        $this->assertSame('editor@example.com', $record->extra['user.id']);
+        $this->assertArrayNotHasKey('tenant.key', $record->extra);
+    }
+
+    /**
+     * Belt and braces for the same cycle: should an accessor ever reach the
+     * database again, the log record it triggers must not run enrichment a
+     * second time.
+     */
+    public function testEnrichmentDoesNotRunReentrantly(): void
+    {
+        $tenant = $this->createMock(Tenant::class);
+        $tenant->method('getTenantKey')->willReturn('Example1');
+
+        $nested = null;
+        $user = $this->createMock(User::class);
+        $user->method('getUserIdentifier')->willReturn('editor@example.com');
+
+        $processor = new RequestContextProcessor(new RequestStack(), $this->security($user));
+
+        // Stand in for a lazy load that logs: the accessor re-enters the
+        // processor before returning.
+        $user->method('getResolvedActiveTenant')->willReturnCallback(
+            function () use (&$nested, $processor, $tenant) {
+                $nested = $processor($this->record());
+
+                return $tenant;
+            }
+        );
+
+        $record = $processor($this->record());
+
+        // The outer call enriches as usual; the nested one is left untouched.
+        $this->assertSame('Example1', $record->extra['tenant.key']);
+        $this->assertArrayNotHasKey('user.id', $nested->extra);
+        $this->assertArrayNotHasKey('tenant.key', $nested->extra);
     }
 
     private function record(): LogRecord

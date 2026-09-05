@@ -187,6 +187,12 @@ class User extends AbstractBaseEntity implements UserInterface, PasswordAuthenti
         return $this->userRoleTenants->first()->getTenant();
     }
 
+    /** {@inheritDoc} */
+    public function getResolvedActiveTenant(): ?Tenant
+    {
+        return $this->activeTenant;
+    }
+
     /**
      * @param Tenant $activeTenant
      *

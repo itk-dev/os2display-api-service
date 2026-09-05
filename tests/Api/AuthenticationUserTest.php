@@ -25,6 +25,7 @@ class AuthenticationUserTest extends AbstractBaseApiTestCase
         $manager = static::getContainer()->get('doctrine')->getManager();
 
         $tenant = $manager->getRepository(Tenant::class)->findOneBy(['tenantKey' => 'ABC']);
+        $secondTenant = $manager->getRepository(Tenant::class)->findOneBy(['tenantKey' => 'DEF']);
 
         $user = new User();
         $user->setFullName('Test Test');
@@ -42,6 +43,14 @@ class AuthenticationUserTest extends AbstractBaseApiTestCase
         $userRoleTenant->setRoles(['ROLE_EDITOR']);
 
         $user->addUserRoleTenant($userRoleTenant);
+
+        // A second tenant, so the assertions below pin the payload's shape: one
+        // entry per tenant the user actually has, as a JSON array.
+        $secondUserRoleTenant = new UserRoleTenant();
+        $secondUserRoleTenant->setTenant($secondTenant);
+        $secondUserRoleTenant->setRoles(['ROLE_EDITOR']);
+
+        $user->addUserRoleTenant($secondUserRoleTenant);
 
         $manager->persist($user);
         $manager->flush();
@@ -61,13 +70,19 @@ class AuthenticationUserTest extends AbstractBaseApiTestCase
         $this->assertNotEmpty($content->refresh_token);
         $this->assertNotEmpty($content->refresh_token_expiration);
         $this->assertNotEmpty($content->tenants);
-        $this->assertCount(1, $content->tenants);
-        $this->assertEquals('ABC', $content->tenants[0]->tenantKey);
+        // Exactly the user's two tenants, once each, decoded as a JSON array
+        // rather than an object — both the response body and the JWT claim are
+        // read by the admin, which renders one dropdown entry per element.
+        $this->assertIsArray($content->tenants);
+        $this->assertCount(2, $content->tenants);
+        $this->assertEquals(['ABC', 'DEF'], array_map(static fn ($tenant) => $tenant->tenantKey, $content->tenants));
         $this->assertCount(1, $content->tenants[0]->roles);
         $this->assertEquals('ROLE_EDITOR', $content->tenants[0]->roles[0]);
 
         // Assert token ttl values
         $decoded = json_decode(base64_decode(str_replace('_', '/', str_replace('-', '+', explode('.', (string) $content->token)[1]))), null, 512, JSON_THROW_ON_ERROR);
+        $this->assertIsArray($decoded->tenants);
+        $this->assertCount(2, $decoded->tenants);
         $expectedJwt = $decoded->iat + self::ENV_JWT_TOKEN_TTL;
         $this->assertEquals($expectedJwt, $decoded->exp);
 

@@ -53,14 +53,30 @@ final readonly class RequestContextProcessor implements ProcessorInterface
             $record->extra[LogField::CLIENT_ADDRESS] = $request->getClientIp();
         }
 
+        // Re-entrancy latch for the identity block below. Identity enrichment
+        // touches Doctrine-managed objects, and a lazy load there emits a
+        // `database` log record through the DBAL logging middleware, which runs
+        // this processor again. That is not merely wasteful: a
+        // PersistentCollection initialised re-entrantly is loaded once per
+        // nesting level and Doctrine *appends* each load to it, so the owning
+        // entity ends up holding one copy of every row per level. The accessors
+        // used below are lazy-load-free by construction; this latch keeps that
+        // guarantee from depending on it. A method-level static because the class
+        // is readonly (which forbids a static property) and the processor is a
+        // shared service handling one request at a time anyway.
+        static $enriching = false;
+
         $user = $this->security->getUser();
-        if (null !== $user) {
+        if (null !== $user && !$enriching) {
+            $enriching = true;
+
             // Enrichment must never break the request it is annotating. Every
-            // identity accessor below can throw — getActiveTenant() when no tenant
-            // is resolved yet, getScreen() on a not-yet-hydrated screen token,
-            // getUserIdentifier() on a custom user — so the whole block is guarded.
-            // Fields written before a throw are kept (the record is mutated in
-            // place); the failing one and any after it are simply left unset.
+            // identity accessor below can throw — getResolvedActiveTenant() on a
+            // screen whose tenant cannot be read, getScreen() on a not-yet-hydrated
+            // screen token, getUserIdentifier() on a custom user — so the whole
+            // block is guarded. Fields written before a throw are kept (the record
+            // is mutated in place); the failing one and any after it are simply
+            // left unset.
             try {
                 // Screen tokens authenticate as ScreenUser; everything else is a
                 // back-office User. Populate screen.id XOR user.id accordingly.
@@ -70,12 +86,25 @@ final readonly class RequestContextProcessor implements ProcessorInterface
                     $record->extra[LogField::USER_ID] = $user->getUserIdentifier();
                 }
 
+                // Deliberately getResolvedActiveTenant() and not getActiveTenant():
+                // the latter falls back to the user's first tenant, which lazy-loads
+                // the tenant collection — a database query from inside a log
+                // processor, which re-enters this processor and corrupts the
+                // collection (see the $enriching docblock). Before a tenant is
+                // resolved — on the login request itself, where the user has not
+                // picked one yet — the field is simply omitted, which is also more
+                // truthful than naming an arbitrary tenant.
                 if ($user instanceof TenantScopedUserInterface) {
-                    $record->extra[LogField::TENANT_KEY] = $user->getActiveTenant()->getTenantKey();
+                    $tenant = $user->getResolvedActiveTenant();
+                    if (null !== $tenant) {
+                        $record->extra[LogField::TENANT_KEY] = $tenant->getTenantKey();
+                    }
                 }
             } catch (\Throwable) { // @phpstan-ignore logging.silentCatch (log enrichment must never break the request it annotates; identity accessors fail pre-resolution and simply omit the field)
-                // An identity accessor failed (no active tenant, unhydrated screen,
-                // lazy-load error, …). Keep whatever was set; never break logging.
+                // An identity accessor failed (unresolvable tenant, unhydrated
+                // screen, …). Keep whatever was set; never break logging.
+            } finally {
+                $enriching = false;
             }
         }
 

@@ -136,6 +136,17 @@ class ScreenUser extends AbstractTenantScopedEntity implements UserInterface, Te
         return $this->getScreen()->getTenant();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * A screen user is bound to exactly one tenant — its screen's — so there is
+     * no separate "resolved" state to distinguish here.
+     */
+    public function getResolvedActiveTenant(): ?Tenant
+    {
+        return $this->getScreen()->getTenant();
+    }
+
     public function setActiveTenant(Tenant $activeTenant): self
     {
         if ($this->getScreen()->getTenant() !== $activeTenant) {

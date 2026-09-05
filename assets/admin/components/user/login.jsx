@@ -12,6 +12,7 @@ import { enhancedApi } from "../../../shared/redux/enhanced-api.ts";
 import AdminConfigLoader from "../util/admin-config-loader.js";
 import { displayError } from "../util/list/toast-component/display-toast";
 import localStorageKeys from "../util/local-storage-keys";
+import dedupeTenants from "../util/helpers/dedupe-tenants";
 import LoginSidebar from "../navigation/login-sidebar/login-sidebar";
 import OIDCLogin from "./oidc-login";
 import LoadingComponent from "../util/loading-component/loading-component";
@@ -48,9 +49,17 @@ function Login() {
    */
   const login = (data) => {
     const { user } = data;
-    const { tenants } = data;
 
-    if (!tenants) {
+    // This is the single funnel for all three login flows (password, OIDC,
+    // refresh), so deduplicating here is enough to keep context, localStorage
+    // and the tenant picker consistent.
+    const tenants = dedupeTenants(data.tenants);
+
+    // Checked against the raw payload, not the deduplicated list: an empty array
+    // is legitimate (an external OIDC user awaiting activation has no tenants),
+    // whereas a non-array means the payload itself is malformed — including the
+    // case where it arrived as a JSON object instead of an array.
+    if (!Array.isArray(data.tenants)) {
       setError(true);
       displayError(t("missing-tenants"));
     }

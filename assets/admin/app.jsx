@@ -7,6 +7,7 @@ import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import localStorageKeys from "./components/util/local-storage-keys";
+import dedupeTenants from "./components/util/helpers/dedupe-tenants";
 import RestrictedRoute from "./components/restricted-route";
 import Topbar from "./components/navigation/topbar/top-bar";
 import SideBar from "./components/navigation/sidebar/sidebar";
@@ -145,9 +146,15 @@ function App() {
         );
       }
 
-      // Fetch the users tenants from local storage and use
+      // Fetch the users tenants from local storage and use. Deduplicated on the
+      // way in: a list stored by an older release can still hold repeats, and
+      // nothing re-fetches it while the session lasts.
       if (localStorage.getItem(localStorageKeys.TENANTS)) {
-        setTenants(JSON.parse(localStorage.getItem(localStorageKeys.TENANTS)));
+        setTenants(
+          dedupeTenants(
+            JSON.parse(localStorage.getItem(localStorageKeys.TENANTS)),
+          ),
+        );
       }
 
       // Get the user name for displaying in top bar.

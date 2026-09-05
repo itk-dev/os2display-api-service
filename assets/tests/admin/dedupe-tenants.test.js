@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import dedupeTenants from "./dedupe-tenants";
+import dedupeTenants from "../../admin/components/util/helpers/dedupe-tenants";
 
 describe("dedupeTenants", () => {
   it("keeps one entry per tenantKey, in first-seen order", () => {

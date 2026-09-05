@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fixed a slide added to a playlist never entering the region rotation on a running screen. The pull
+  that fetched the new slide was the one pull that did not hand it to the regions, because region
+  updates were gated on the screen hash and that hash included `relationsChecksum`. Region content is
+  now delivered on every pull, for every region that has announced itself.
+- Fixed the screen client caching the server's `relationsChecksum` for data a pull could not load, so
+  a single failed request froze a region, campaign, layout, template or media item until an editor
+  happened to change it. Those checksums are now stored as null, forcing a re-fetch on the next pull.
+- Fixed a region going blank when only its playlist's slides request failed; the previously loaded
+  slides are now carried over, matching the existing fallback for a failed region request.
 - Fixed the screen client treating a collection cut short by the 100-page backstop as a complete one,
   which cached the truncated data behind the server's checksum until an editor changed the content
   (#507). The collection is now given up, the same as when a page request fails.

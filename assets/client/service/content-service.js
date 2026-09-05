@@ -24,6 +24,15 @@ class ContentService {
 
   screenHash;
 
+  // Regions that have mounted and are listening for their content. Region
+  // content is dispatched as a DOM event, so pushing to a region before React
+  // has mounted it drops the payload on the floor -- and worse, ScheduleService
+  // would record the hash of what it "sent", so the regionReady that follows the
+  // mount finds the content unchanged and sends nothing at all. Feeding only
+  // regions that have announced themselves keeps a new region's first delivery
+  // on the regionReady path, where it has always been.
+  readyRegions = new Set();
+
   /**
    * Constructor.
    */
@@ -113,12 +122,13 @@ class ContentService {
     const data = event.detail;
     this.currentScreen = data.screen;
 
-    const screenData = { ...this.currentScreen };
-
-    // Remove regionData to only emit screen when it has changed.
-    for (let i = 0; i < screenData.regions.length; i += 1) {
-      delete screenData.regionData;
-    }
+    // regionData is left out because it reaches the regions through
+    // ScheduleService below, not through a re-render. relationsChecksum is left
+    // out because it changes whenever *anything* below the screen changes, which
+    // made this hash report "the screen changed" on every content edit. What is
+    // left answers the only question the hash is for: does the screen itself
+    // need re-rendering?
+    const { regionData, relationsChecksum, ...screenData } = this.currentScreen;
 
     const newHash = Base64.stringify(sha256(JSON.stringify(screenData)));
 
@@ -130,13 +140,20 @@ class ContentService {
       ContentService.emitScreen(screenData);
     } else {
       logger.info("Screen has not changed. Not emitting screen.");
-
-      // eslint-disable-next-line guard-for-in,no-restricted-syntax
-      for (const regionKey in data.screen.regionData) {
-        const region = this.currentScreen.regionData[regionKey];
-        this.scheduleService.updateRegion(regionKey, region);
-      }
     }
+
+    // Unconditional, and deliberately not an `else`. Adding a slide to a
+    // playlist changes screen.relationsChecksum.regions but not .layout -- the
+    // ScreenLayoutRegions node stores its checksum as a JSON array, so JSON_SET
+    // can never write to it and the layout checksum is byte-identical across the
+    // edit. So the pull that fetches the new slide re-fetches regionData while
+    // layoutData is served from cache *by reference*, leaving the region prop
+    // identity unchanged and regionReady silent. Gating this on the screen hash
+    // meant that one pull -- the only one carrying the new slide -- delivered it
+    // nowhere, and the region waited a whole further pull interval for it.
+    this.readyRegions.forEach((regionId) => {
+      this.scheduleService.updateRegion(regionId, regionData?.[regionId]);
+    });
   }
 
   /**
@@ -150,6 +167,10 @@ class ContentService {
     const regionId = data.id;
 
     logger.info(`Event received: regionReady for ${regionId}`);
+
+    // Recorded before the guard below: a region that mounts before the first
+    // pull lands still has to receive that pull's content.
+    this.readyRegions.add(regionId);
 
     if (this.currentScreen) {
       this.scheduleService.updateRegion(
@@ -171,6 +192,7 @@ class ContentService {
 
     logger.info(`Event received: regionRemoved for ${regionId}`);
 
+    this.readyRegions.delete(regionId);
     this.scheduleService.regionRemoved(regionId);
   }
 
@@ -193,6 +215,10 @@ class ContentService {
    */
   stop() {
     logger.info("Content service stopped.");
+
+    // The regions unmount after this point, so their regionRemoved events have
+    // no listener left to clear the set entry.
+    this.readyRegions.clear();
 
     document.removeEventListener("stopDataSync", this.stopSyncHandler);
     document.removeEventListener("startDataSync", this.startDataSyncHandler);

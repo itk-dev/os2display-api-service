@@ -84,7 +84,22 @@ real and pretend UTC gives off-by-timezone bugs.
 - `regionRemoved` clears the interval and cache for that region.
 
 Coarse data freshness is separate: `DataSync`/`PullStrategy` polls the API on `pullStrategyInterval` and hands new
-screen data to `ContentService`, which calls `ScheduleService.updateRegion()` per region.
+screen data to `ContentService`, which calls `ScheduleService.updateRegion()` per region — on **every** pull, for every
+region that has announced itself with `regionReady`. That last part is load-bearing, and used to be wrong:
+
+  > `ContentService` also hashes the screen to decide whether to re-emit it for rendering. That hash is a *render*
+  > signal only and must never gate region updates. It once did, and adding a slide to a playlist changes
+  > `screen.relationsChecksum.regions` but **not** `.layout` — the `ScreenLayoutRegions` node stores its checksum as a
+  > JSON array, which `JSON_SET` cannot write into, so the layout checksum is byte-identical across the edit. The pull
+  > that fetched the new slide therefore re-fetched `regionData` while serving `layoutData` from cache *by reference*,
+  > which left the `region` prop identity unchanged and `regionReady` silent. Both routes into `updateRegion` were
+  > closed on the one pull that mattered, and the slide waited a whole further pull interval. `relationsChecksum` is
+  > excluded from the screen hash for the same reason: it moves whenever anything anywhere below the screen changes.
+
+The gate on `regionReady` is deliberate. Region content is delivered as a DOM event, so pushing to a region React has
+not mounted yet drops the payload — and `ScheduleService` would still record the hash of what it "sent", so the
+`regionReady` that follows the mount finds the content unchanged and sends nothing at all. A new region's first
+delivery therefore stays on the `regionReady` path.
 
 ---
 
@@ -312,7 +327,12 @@ Every template must:
       hidden-by-default) and whether an occurrence covers *now* under the pretend-UTC convention.
 - [ ] Schedule changes late → expected up to `schedulingInterval` (60 s default) after the boundary.
 - [ ] New content not appearing → it applies at rotation wraparound, not immediately; also check the region hash
-      actually changed (client logs `sendSlides regionContent-…`).
+      actually changed (client logs `sendSlides regionContent-…` on the same pull that logs
+      `Fetching regions and slides for regions.`). If the pull fetched it but no `sendSlides` followed, the delivery
+      path is broken, not the rotation.
+- [ ] Content stuck one edit behind, indefinitely → a pull that fell back on earlier data must not cache the server's
+      fresh `relationsChecksum` for it, or every later pull takes the cache branch. `PullStrategy` stores `null` for
+      those keys instead; look for `Could not load …` warnings in the pull that preceded the freeze.
 - [ ] Same slide behaving oddly in two regions → confirm code keys on `executionId`, not slide id.
 
 ## 8. Service components (reference)

@@ -2,6 +2,7 @@ import { useEffect, useState, createRef } from "react";
 import { createGridArea } from "../../shared/grid-generator/grid-generator";
 import ErrorBoundary from "./error-boundary.jsx";
 import idFromPath from "../util/id-from-path";
+import isRenderableSlide from "../util/is-renderable-slide";
 import IconClose from "../assets/icon-close.svg";
 import IconPointer from "../assets/icon-pointer.svg";
 import Slide from "./slide.jsx";
@@ -70,7 +71,15 @@ function TouchRegion({ region }) {
    *   The event. The data is contained in detail.
    */
   function regionContentListener(event) {
-    setSlides([...event.detail.slides]);
+    const receivedSlides = [...event.detail.slides];
+
+    // Filter out invalid slides, as Region does. A slide the pull could not
+    // resolve a template for renders as nothing, so an unfiltered list gave the
+    // region a button that opens an empty panel - and, because
+    // ScheduleService.checkForEmptyContent already discounts those slides, a
+    // touch region holding only invalid ones offered buttons for content the
+    // rest of the client had agreed was not there.
+    setSlides(receivedSlides.filter(isRenderableSlide));
   }
 
   // Setup event listener for region content.
@@ -150,8 +159,8 @@ function TouchRegion({ region }) {
                   {displayClose && (
                     <div
                       className="touch-button-close"
-                      onClick={slideDone}
-                      onKeyDown={slideDone}
+                      onClick={() => slideDone(currentSlide)}
+                      onKeyDown={() => slideDone(currentSlide)}
                       role="button"
                       tabIndex={0}
                     >

@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Added flow tests for the screen client, covering the path from API data to rendered slide with only
+  `ApiHelper` mocked: an empty screen, content added and removed while it runs, split and touch
+  layouts, publish windows and rrule schedules, and the degraded-pull cases.
+- Fixed the touch region's close button announcing a `slideDone` for `undefined`. It was wired
+  straight to the handler, so it was called with the click event rather than the slide being closed.
+- Fixed a touch region offering buttons for slides it cannot render. A slide with no resolvable
+  template renders as nothing, so the button opened an empty panel — and, since the scheduler already
+  discounts those slides when deciding whether a region has content, a touch region holding only
+  invalid ones advertised content the rest of the client had agreed was not there.
 - Fixed a region that changes type — between the default and touch-button renderers under the same
   region id — going blank until the next pull delivered different content, because the outgoing
   component's cleanup dropped the region's scheduled slides before the incoming one asked for them.
